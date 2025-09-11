@@ -90,7 +90,7 @@
     <button id="startBtn">シャッフル開始</button>
     <button id="stopBtn" disabled>ストップ</button>
     <button id="resetBtn">全座席有効化</button>
-    <button id="downloadBtn" disabled>確定 & Excel ダウンロード</button>
+    <button id="downloadBtn">Excel ダウンロード</button>
   </div>
 
   <table id="seatTable"></table>
@@ -221,7 +221,6 @@
     document.getElementById("startBtn").addEventListener("click", () => {
       if (timer) return;
       document.getElementById("stopBtn").disabled = false;
-      document.getElementById("downloadBtn").disabled = true;
       timer = setInterval(() => {
         redistributeStudents();
       }, 150);
@@ -231,7 +230,6 @@
       clearInterval(timer);
       timer = null;
       document.getElementById("stopBtn").disabled = true;
-      document.getElementById("downloadBtn").disabled = false;
     });
 
     document.getElementById("resetBtn").addEventListener("click", () => {
