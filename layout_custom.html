@@ -114,10 +114,10 @@
 
     td {
       border: 0.3vh solid #fff;
-      height: max(6vh, 40px); /* 最小高さを確保 */
-      min-width: 40px; /* 最小幅を確保 */
+      height: max(8vh, 40px); /* 元の8vhに戻す */
+      min-width: 40px;
       text-align: center;
-      font-size: max(2.5vw, 16px); /* 最小フォントサイズを確保 */
+      font-size: 3.5vw; /* 7×6と同じサイズに戻す */
       user-select: none;
       cursor: pointer;
       transition: background-color 0.3s;
@@ -145,21 +145,14 @@
       input[type="number"] { width: 4vw; font-size: 2vw; }
       .control-label { font-size: 1.8vw; }
       td { 
-        font-size: max(3vw, 14px); 
-        height: max(7vh, 35px);
+        font-size: 3.5vw; /* 7×6と同じサイズ */
+        height: max(9vh, 35px); /* 7×6と同じサイズ */
         min-width: 35px;
       }
       #info { font-size: 2.2vw; }
     }
     
-    /* 大きなグリッド用の調整 */
-    @media (min-width: 1201px) {
-      td {
-        font-size: max(1.8vw, 18px);
-        height: max(5vh, 45px);
-        min-width: 50px;
-      }
-    }
+    /* 大きなグリッド用の調整を削除 - 7×6と同じ表示にする */
   </style>
 </head>
 <body>
