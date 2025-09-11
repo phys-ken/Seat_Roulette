@@ -173,7 +173,6 @@
         <input type="number" id="colInput" min="1" max="15" value="7">
         <button class="small-btn" id="colIncBtn">+</button>
       </div>
-      <button id="applyBtn">適用</button>
     </div>
   </div>
 
@@ -348,43 +347,9 @@
     const rowInput = document.getElementById("rowInput");
     const colInput = document.getElementById("colInput");
 
-    // 行数制御
-    document.getElementById("rowDecBtn").addEventListener("click", () => {
-      if (timer) return;
-      const current = parseInt(rowInput.value);
-      if (current > 1) {
-        rowInput.value = current - 1;
-      }
-    });
-
-    document.getElementById("rowIncBtn").addEventListener("click", () => {
-      if (timer) return;
-      const current = parseInt(rowInput.value);
-      if (current < 12) {
-        rowInput.value = current + 1;
-      }
-    });
-
-    // 列数制御
-    document.getElementById("colDecBtn").addEventListener("click", () => {
-      if (timer) return;
-      const current = parseInt(colInput.value);
-      if (current > 1) {
-        colInput.value = current - 1;
-      }
-    });
-
-    document.getElementById("colIncBtn").addEventListener("click", () => {
-      if (timer) return;
-      const current = parseInt(colInput.value);
-      if (current < 15) {
-        colInput.value = current + 1;
-      }
-    });
-
-    // 適用ボタン
-    document.getElementById("applyBtn").addEventListener("click", () => {
-      if (timer) return;
+    // グリッドサイズを更新する共通関数
+    function updateGridSize() {
+      if (timer) return; // シャッフル中は無効
       
       const newRows = parseInt(rowInput.value);
       const newCols = parseInt(colInput.value);
@@ -394,15 +359,57 @@
         COLS = newCols;
         generateTable();
       }
+    }
+
+    // 行数制御
+    document.getElementById("rowDecBtn").addEventListener("click", () => {
+      if (timer) return;
+      const current = parseInt(rowInput.value);
+      if (current > 1) {
+        rowInput.value = current - 1;
+        updateGridSize();
+      }
     });
 
-    // 入力フィールドでEnterキー押下時の適用
-    [rowInput, colInput].forEach(input => {
-      input.addEventListener("keypress", (e) => {
-        if (e.key === "Enter" && !timer) {
-          document.getElementById("applyBtn").click();
-        }
-      });
+    document.getElementById("rowIncBtn").addEventListener("click", () => {
+      if (timer) return;
+      const current = parseInt(rowInput.value);
+      if (current < 12) {
+        rowInput.value = current + 1;
+        updateGridSize();
+      }
+    });
+
+    // 列数制御
+    document.getElementById("colDecBtn").addEventListener("click", () => {
+      if (timer) return;
+      const current = parseInt(colInput.value);
+      if (current > 1) {
+        colInput.value = current - 1;
+        updateGridSize();
+      }
+    });
+
+    document.getElementById("colIncBtn").addEventListener("click", () => {
+      if (timer) return;
+      const current = parseInt(colInput.value);
+      if (current < 15) {
+        colInput.value = current + 1;
+        updateGridSize();
+      }
+    });
+
+    // 入力フィールドの変更を監視（リアルタイム更新）
+    rowInput.addEventListener("input", () => {
+      if (!timer) {
+        updateGridSize();
+      }
+    });
+
+    colInput.addEventListener("input", () => {
+      if (!timer) {
+        updateGridSize();
+      }
     });
 
     /* ===== Excel 出力 ===== */
