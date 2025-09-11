@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>座席ルーレット</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <style>
+    /* ── 黒板投影向け横長レイアウト ── */
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      background: #000;  /* 黒板カラー */
+      color: #fff;
+      overflow: hidden;
+      font-family: system-ui, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    h1 {
+      font-size: 5vw;
+      margin: 2vh 0 1vh;
+      letter-spacing: 0.1em;
+    }
+
+    #controls {
+      margin-bottom: 2vh;
+    }
+
+    button {
+      font-size: 2.2vw;
+      padding: 1vh 3vw;
+      margin: 0 1vw;
+      border: none;
+      border-radius: 1vw;
+      background: #2e7d32;
+      color: #fff;
+      cursor: pointer;
+    }
+
+    button:disabled {
+      background: #555;
+      cursor: not-allowed;
+    }
+
+    table {
+      border-collapse: collapse;
+      width: 90vw;
+      table-layout: fixed;
+    }
+
+    td {
+      border: 0.4vh solid #fff;
+      height: 10vh;           /* 行数が減ったので少し高く */
+      text-align: center;
+      font-size: 3.5vw;
+      user-select: none;
+    }
+  </style>
+</head>
+<body>
+  <h1>座席ルーレット</h1>
+
+  <div id="controls">
+    <button id="startBtn">シャッフル開始</button>
+    <button id="stopBtn" disabled>ストップ</button>
+    <button id="downloadBtn" disabled>確定 & Excel ダウンロード</button>
+  </div>
+
+  <table id="seatTable"></table>
+
+  <script>
+    /* ===== グリッド設定：横 7 列 × 縦 6 行 ===== */
+    const ROWS = 6;
+    const COLS = 7;
+
+    /* ===== 生徒番号 1〜41 を配列化 ===== */
+    const students = Array.from({ length: 41 }, (_, i) => i + 1);
+
+    // 座席配列 (41 人分のみ)  ※右下 1 マスは固定空席
+    const seatNumbers = [...students];
+
+    /* ===== テーブル生成 ===== */
+    const table = document.getElementById("seatTable");
+    for (let r = 0; r < ROWS; r++) {
+      const tr = document.createElement("tr");
+      for (let c = 0; c < COLS; c++) {
+        const td = document.createElement("td");
+        td.id = `seat-${r}-${c}`;
+        tr.appendChild(td);
+      }
+      table.appendChild(tr);
+    }
+
+    /* ===== 便利関数 ===== */
+    function shuffle(arr) {
+      for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+      }
+    }
+
+    function render() {
+      let idx = 0;
+      for (let r = 0; r < ROWS; r++) {
+        for (let c = 0; c < COLS; c++) {
+          const cell = document.getElementById(`seat-${r}-${c}`);
+          if (r === ROWS - 1 && c === COLS - 1) {
+            // 右下を固定空席
+            cell.textContent = "";
+          } else {
+            cell.textContent = seatNumbers[idx++] || "";
+          }
+        }
+      }
+    }
+
+    /* ===== ルーレット制御 ===== */
+    let timer = null;
+
+    document.getElementById("startBtn").addEventListener("click", () => {
+      if (timer) return;
+      document.getElementById("stopBtn").disabled = false;
+      document.getElementById("downloadBtn").disabled = true;
+      timer = setInterval(() => {
+        shuffle(seatNumbers);   // 41 人分のみシャッフル
+        render();
+      }, 150);
+    });
+
+    document.getElementById("stopBtn").addEventListener("click", () => {
+      clearInterval(timer);
+      timer = null;
+      document.getElementById("stopBtn").disabled = true;
+      document.getElementById("downloadBtn").disabled = false;
+    });
+
+    /* ===== Excel 出力 ===== */
+    document.getElementById("downloadBtn").addEventListener("click", () => {
+      const aoa = [];
+      let idx = 0;
+      for (let r = 0; r < ROWS; r++) {
+        aoa[r] = [];
+        for (let c = 0; c < COLS; c++) {
+          if (r === ROWS - 1 && c === COLS - 1) {
+            aoa[r][c] = "";  // 右下固定空欄
+          } else {
+            aoa[r][c] = seatNumbers[idx++] || "";
+          }
+        }
+      }
+      const wb = XLSX.utils.book_new();
+      const ws = XLSX.utils.aoa_to_sheet(aoa);
+      XLSX.utils.book_append_sheet(wb, ws, "座席表_生徒目線");
+      XLSX.writeFile(wb, "seating_chart_student.xlsx");
+    });
+
+    /* ===== 初期表示 ===== */
+    shuffle(seatNumbers);
+    render();
+  </script>
+</body>
+</html>
