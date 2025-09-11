@@ -12,10 +12,11 @@
       margin: 0;
       padding: 0;
       width: 100%;
-      height: 100%;
+      min-height: 100vh; /* 100%から変更 */
       background: #000;  /* 黒板カラー */
       color: #fff;
-      overflow: hidden;
+      overflow-x: auto; /* 横スクロール許可 */
+      overflow-y: auto; /* 縦スクロール許可 */
       font-family: system-ui, sans-serif;
       display: flex;
       flex-direction: column;
@@ -104,16 +105,19 @@
 
     table {
       border-collapse: collapse;
-      width: 90vw;
+      width: max(90vw, 800px); /* 最小幅を確保 */
+      max-width: none; /* 最大幅制限を解除 */
       table-layout: fixed;
       margin-top: 1vh;
+      margin-bottom: 2vh; /* 下部マージン追加 */
     }
 
     td {
       border: 0.3vh solid #fff;
-      height: 8vh;
+      height: max(6vh, 40px); /* 最小高さを確保 */
+      min-width: 40px; /* 最小幅を確保 */
       text-align: center;
-      font-size: 3vw;
+      font-size: max(2.5vw, 16px); /* 最小フォントサイズを確保 */
       user-select: none;
       cursor: pointer;
       transition: background-color 0.3s;
@@ -140,8 +144,21 @@
       .small-btn { font-size: 1.5vw; padding: 0.7vh 1.2vw; }
       input[type="number"] { width: 4vw; font-size: 2vw; }
       .control-label { font-size: 1.8vw; }
-      td { font-size: 3.5vw; height: 9vh; }
+      td { 
+        font-size: max(3vw, 14px); 
+        height: max(7vh, 35px);
+        min-width: 35px;
+      }
       #info { font-size: 2.2vw; }
+    }
+    
+    /* 大きなグリッド用の調整 */
+    @media (min-width: 1201px) {
+      td {
+        font-size: max(1.8vw, 18px);
+        height: max(5vh, 45px);
+        min-width: 50px;
+      }
     }
   </style>
 </head>
