@@ -103,6 +103,24 @@
       white-space: nowrap;
     }
 
+    .info-link {
+      position: fixed;
+      top: 1vh;
+      right: 1vw;
+      font-size: 1vw;
+      color: #ccc;
+      text-decoration: none;
+      opacity: 0.7;
+      transition: opacity 0.3s, color 0.3s;
+      z-index: 1000;
+    }
+
+    .info-link:hover {
+      opacity: 1;
+      color: #fff;
+      text-decoration: underline;
+    }
+
     table {
       border-collapse: collapse;
       width: max(90vw, 800px); /* 最小幅を確保 */
@@ -150,6 +168,7 @@
         min-width: 35px;
       }
       #info { font-size: 2.2vw; }
+      .info-link { font-size: 1.5vw; top: 1.5vh; right: 1.5vw; }
     }
     
     /* 大きなグリッド用の調整を削除 - 7×6と同じ表示にする */
@@ -157,6 +176,8 @@
 </head>
 <body>
   <h1>座席ルーレット カスタム</h1>
+
+  <a href="https://phys-ken.github.io/Seat_Roulette/" target="_blank" class="info-link">最新情報等はこちら</a>
 
   <div id="info">
     有効座席数: <span id="activeCount">0</span> / <span id="totalCount">0</span> （座席をクリックで有効・無効切替）
