@@ -134,7 +134,7 @@
           }
           
           updateActiveCount();
-          redistributeStudents();
+          arrangeStudentsInOrder(); // 座席クリック時は順番配置
         });
         
         tr.appendChild(td);
@@ -171,6 +171,29 @@
         for (let c = 0; c < COLS; c++) {
           const seatIndex = r * COLS + c;
           seatNumbers[seatIndex] = seatActive[seatIndex] ? (activeStudents[studentIndex++] || "") : "";
+        }
+      }
+      
+      render();
+    }
+
+    function arrangeStudentsInOrder() {
+      // 有効な座席数を取得
+      const activeSeats = seatActive.filter(active => active).length;
+      
+      // 有効座席数分の生徒番号を準備（順番通り）
+      const activeStudents = students.slice(0, activeSeats);
+      
+      // 座席に配置（右上から下に向かって、列ごとに左に移動）
+      let studentIndex = 0;
+      for (let c = COLS - 1; c >= 0; c--) { // 右の列から左へ
+        for (let r = 0; r < ROWS; r++) { // 上から下へ
+          const seatIndex = r * COLS + c;
+          if (seatActive[seatIndex]) {
+            seatNumbers[seatIndex] = activeStudents[studentIndex++] || "";
+          } else {
+            seatNumbers[seatIndex] = "";
+          }
         }
       }
       
@@ -226,7 +249,7 @@
       }
       
       updateActiveCount();
-      redistributeStudents();
+      arrangeStudentsInOrder(); // 全座席有効化時も順番配置
     });
 
     /* ===== Excel 出力 ===== */
@@ -275,7 +298,7 @@
     });
 
     /* ===== 初期表示 ===== */
-    redistributeStudents();
+    arrangeStudentsInOrder(); // 初期表示は順番配置
   </script>
 </body>
 </html>
