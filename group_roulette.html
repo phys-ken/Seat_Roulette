@@ -1,0 +1,1312 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>グループ分けルーレット</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <style>
+    /* ── CSS 変数（Google Dark Mode ベース） ── */
+    :root {
+      --bg:        #202124;
+      --surface:   #292b2f;
+      --surface2:  #35363a;
+      --text:      #e8eaed;
+      --text-muted:#9aa0a6;
+      --accent:    #8ab4f8;
+      --green:     #81c995;
+      --red:       #ea4335;
+      --yellow:    #fdd663;
+      --btn-primary: #1a73e8;
+      --btn-stop:    #ea4335;
+      --border:    #5f6368;
+      --absent:    #5f6368;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: system-ui, 'Segoe UI', sans-serif;
+      overflow-x: hidden;
+    }
+
+    /* ── ページ共通 ── */
+    .page { display: none; min-height: 100vh; }
+    .page.active { display: flex; flex-direction: column; }
+
+    h1 {
+      font-size: clamp(1.4rem, 3.5vw, 2.2rem);
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      color: var(--accent);
+    }
+
+    h2 {
+      font-size: clamp(1.1rem, 2.5vw, 1.6rem);
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    /* ── ボタン共通 ── */
+    .btn {
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 700;
+      font-family: inherit;
+      transition: opacity 0.15s, transform 0.1s;
+    }
+    .btn:hover:not(:disabled) { opacity: 0.85; }
+    .btn:active:not(:disabled) { transform: scale(0.97); }
+    .btn:disabled { opacity: 0.35; cursor: not-allowed; }
+
+    .btn-primary {
+      background: var(--btn-primary);
+      color: #fff;
+    }
+    .btn-stop {
+      background: var(--btn-stop);
+      color: #fff;
+    }
+    .btn-secondary {
+      background: var(--surface2);
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+    .btn-small {
+      font-size: 0.85rem;
+      padding: 4px 10px;
+    }
+
+    .stepper-btn {
+      background: var(--surface2);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      width: 32px;
+      height: 32px;
+      font-size: 1.1rem;
+      font-weight: 700;
+      cursor: pointer;
+      line-height: 1;
+    }
+    .stepper-btn:hover { background: var(--border); }
+
+    input[type="number"] {
+      background: var(--surface2);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      text-align: center;
+      font-weight: 700;
+      font-family: inherit;
+      padding: 4px;
+    }
+    input[type="number"]:focus { outline: 2px solid var(--accent); }
+
+    /* ── カード ── */
+    .card {
+      background: var(--surface);
+      border-radius: 12px;
+      padding: 20px;
+      border: 1px solid var(--surface2);
+    }
+
+    /* ────────────────────────────
+       設定モード (page-setup)
+    ──────────────────────────── */
+    #page-setup {
+      padding: 24px 20px;
+      gap: 20px;
+    }
+
+    #page-setup .setup-header {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    /* 生徒数設定 */
+    .stepper-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .stepper-label {
+      font-weight: 700;
+      font-size: 1rem;
+      min-width: 90px;
+      color: var(--text-muted);
+    }
+
+    #total-input {
+      width: 64px;
+      height: 32px;
+      font-size: 1rem;
+    }
+
+    /* 欠席者グリッド */
+    .absent-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 10px;
+    }
+
+    .absent-btn {
+      width: 40px;
+      height: 40px;
+      border-radius: 8px;
+      border: 1.5px solid var(--border);
+      background: var(--surface2);
+      color: var(--text);
+      font-size: 0.9rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s;
+    }
+    .absent-btn.absent {
+      background: var(--absent);
+      color: var(--bg);
+      border-color: var(--absent);
+      text-decoration: line-through;
+    }
+
+    /* グループ設定 */
+    .group-count-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 16px;
+    }
+
+    #group-count-input {
+      width: 56px;
+      height: 32px;
+      font-size: 1rem;
+    }
+
+    #group-sizes-container {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .group-size-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--surface2);
+      border-radius: 8px;
+      padding: 6px 10px;
+    }
+
+    .group-size-label {
+      font-weight: 700;
+      font-size: 0.9rem;
+      min-width: 30px;
+      color: var(--accent);
+    }
+
+    .group-size-input {
+      width: 48px;
+      height: 28px;
+      font-size: 0.9rem;
+    }
+
+    #total-check {
+      font-size: 0.95rem;
+      font-weight: 700;
+      margin-top: 12px;
+      padding: 8px 12px;
+      border-radius: 8px;
+      background: var(--surface2);
+      display: inline-block;
+    }
+    #total-check.ok   { color: var(--green); }
+    #total-check.warn { color: var(--yellow); }
+    #total-check.err  { color: var(--red); }
+
+    /* 開始ボタン */
+    #start-roulette-btn {
+      font-size: clamp(1.1rem, 2.5vw, 1.5rem);
+      padding: 14px 40px;
+      border-radius: 12px;
+      align-self: center;
+      margin-top: 8px;
+    }
+
+    /* ────────────────────────────
+       ルーレットモード (page-roulette)
+    ──────────────────────────── */
+    #page-roulette {
+      position: relative;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+      min-height: 100vh;
+    }
+
+    #back-to-setup-btn {
+      position: absolute;
+      top: 16px;
+      right: 16px;
+      font-size: 0.8rem;
+      padding: 6px 14px;
+    }
+
+    /* idle: スタートボタン */
+    #idle-view {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 20px;
+    }
+
+    #big-start-btn {
+      font-size: clamp(1.8rem, 5vw, 3rem);
+      padding: clamp(16px, 3vw, 28px) clamp(32px, 6vw, 60px);
+      border-radius: 16px;
+    }
+
+    /* running / stopped 表示 */
+    #roulette-view {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+      width: 100%;
+    }
+
+    #roulette-view.visible { display: flex; }
+
+    /* 生徒グリッド（ルーレット中）*/
+    #student-roulette-grid {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 8px;
+      width: 100%;
+      max-width: 1200px;
+    }
+
+    .sr-cell {
+      background: var(--surface);
+      border: 1.5px solid var(--border);
+      border-radius: 10px;
+      padding: 6px 4px;
+      min-width: 70px;
+      text-align: center;
+      font-weight: 700;
+    }
+
+    .sr-cell .sr-num {
+      font-size: clamp(1rem, 2.2vw, 1.6rem);
+      color: var(--text-muted);
+    }
+
+    .sr-cell .sr-group {
+      font-size: clamp(1.2rem, 2.8vw, 2rem);
+      color: var(--accent);
+      min-height: 1.2em;
+    }
+
+    .sr-cell.absent-cell {
+      opacity: 0.3;
+    }
+
+    .sr-cell.absent-cell .sr-group {
+      color: var(--text-muted);
+      font-size: 0.9rem;
+    }
+
+    .sr-cell.confirmed .sr-group {
+      color: var(--green);
+    }
+
+    /* ストップボタン */
+    #big-stop-btn {
+      font-size: clamp(1.4rem, 3.5vw, 2.2rem);
+      padding: clamp(12px, 2.5vw, 20px) clamp(28px, 5vw, 50px);
+      border-radius: 14px;
+    }
+
+    /* ─── 結果ビュー ─── */
+    #result-area {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+      width: 100%;
+    }
+
+    #result-area.visible { display: flex; }
+
+    /* タブ */
+    .tab-row {
+      display: flex;
+      gap: 0;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+    }
+
+    .tab-btn {
+      font-size: clamp(0.9rem, 2vw, 1.2rem);
+      font-weight: 700;
+      padding: 10px 28px;
+      background: var(--surface);
+      color: var(--text-muted);
+      border: none;
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s;
+    }
+
+    .tab-btn.active {
+      background: var(--btn-primary);
+      color: #fff;
+    }
+
+    .tab-content { display: none; width: 100%; max-width: 1200px; }
+    .tab-content.active { display: block; }
+
+    /* 生徒ビュー */
+    #student-view-grid {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .sv-cell {
+      background: var(--surface);
+      border: 1.5px solid var(--border);
+      border-radius: 10px;
+      padding: 8px 10px;
+      min-width: 80px;
+      text-align: center;
+    }
+
+    .sv-num {
+      font-size: clamp(1rem, 2vw, 1.4rem);
+      color: var(--text-muted);
+      font-weight: 700;
+    }
+
+    .sv-arrow {
+      font-size: 0.7rem;
+      color: var(--text-muted);
+    }
+
+    .sv-group {
+      font-size: clamp(1.4rem, 3vw, 2.2rem);
+      font-weight: 700;
+      color: var(--green);
+    }
+
+    .sv-cell.absent-cell .sv-group {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }
+
+    /* 班ごとビュー */
+    #group-view-container {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+      justify-content: center;
+    }
+
+    .group-card {
+      background: var(--surface);
+      border: 1.5px solid var(--border);
+      border-radius: 14px;
+      padding: 16px;
+      min-width: 160px;
+      max-width: 220px;
+      flex: 1 1 160px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .group-card-title {
+      font-size: clamp(1.2rem, 2.5vw, 1.8rem);
+      font-weight: 700;
+      color: var(--accent);
+    }
+
+    /* 円形配置コンテナ */
+    .circle-layout {
+      position: relative;
+      width: 140px;
+      height: 140px;
+    }
+
+    .circle-member {
+      position: absolute;
+      width: 44px;
+      height: 44px;
+      background: var(--surface2);
+      border: 2px solid var(--green);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: clamp(0.85rem, 1.8vw, 1.1rem);
+      font-weight: 700;
+      color: var(--text);
+      transform: translate(-50%, -50%);
+    }
+
+    /* 2人横並び */
+    .pair-layout {
+      display: flex;
+      gap: 12px;
+    }
+
+    .pair-member {
+      width: 52px;
+      height: 52px;
+      background: var(--surface2);
+      border: 2px solid var(--green);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    /* 1人 */
+    .single-member {
+      width: 60px;
+      height: 60px;
+      background: var(--surface2);
+      border: 2px solid var(--green);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    /* 欠席者フッター */
+    #absent-footer {
+      color: var(--text-muted);
+      font-size: 0.9rem;
+      font-weight: 700;
+      text-align: center;
+    }
+
+    /* 結果アクションボタン行 */
+    .result-actions {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .result-actions .btn {
+      font-size: clamp(0.9rem, 2vw, 1.1rem);
+      padding: 10px 24px;
+    }
+
+    /* ── ユーティリティ ── */
+    .section-title {
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 8px;
+    }
+  </style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════
+     設定モード
+════════════════════════════════════════════ -->
+<div id="page-setup" class="page active">
+
+  <div class="setup-header">
+    <h1>グループ分けルーレット</h1>
+    <span style="color:var(--text-muted); font-size:0.85rem; align-self:flex-end; padding-bottom:4px;">教師設定</span>
+  </div>
+
+  <!-- 生徒数 -->
+  <div class="card">
+    <div class="section-title">生徒数</div>
+    <div class="stepper-row">
+      <span class="stepper-label">出席番号上限</span>
+      <button class="stepper-btn" id="total-dec">−</button>
+      <input type="number" id="total-input" value="42" min="1" max="200" />
+      <button class="stepper-btn" id="total-inc">+</button>
+      <span style="color:var(--text-muted); font-size:0.85rem;" id="present-count-label"></span>
+    </div>
+  </div>
+
+  <!-- 欠席者 -->
+  <div class="card">
+    <div class="section-title">欠席者（タップして選択）</div>
+    <div class="absent-grid" id="absent-grid"></div>
+  </div>
+
+  <!-- グループ設定 -->
+  <div class="card">
+    <div class="section-title">グループ設定</div>
+    <div class="group-count-row">
+      <span class="stepper-label">グループ数</span>
+      <button class="stepper-btn" id="group-dec">−</button>
+      <input type="number" id="group-count-input" value="6" min="1" max="30" />
+      <button class="stepper-btn" id="group-inc">+</button>
+    </div>
+    <div id="group-sizes-container"></div>
+    <div id="total-check"></div>
+  </div>
+
+  <!-- 開始ボタン -->
+  <button class="btn btn-primary" id="start-roulette-btn">ルーレット開始 ▶</button>
+
+</div>
+
+
+<!-- ═══════════════════════════════════════════
+     ルーレットモード
+════════════════════════════════════════════ -->
+<div id="page-roulette" class="page">
+
+  <button class="btn btn-secondary" id="back-to-setup-btn">◀ 設定に戻る</button>
+
+  <!-- idle: スタートボタン -->
+  <div id="idle-view">
+    <h1 id="roulette-title" style="text-align:center;"></h1>
+    <button class="btn btn-primary" id="big-start-btn">スタート ▶</button>
+  </div>
+
+  <!-- running: グリッド + ストップ -->
+  <div id="roulette-view">
+    <div id="student-roulette-grid"></div>
+    <button class="btn btn-stop" id="big-stop-btn">ストップ ■</button>
+  </div>
+
+  <!-- stopped: 結果 -->
+  <div id="result-area">
+    <div class="tab-row">
+      <button class="tab-btn active" data-tab="student-tab">生徒ビュー</button>
+      <button class="tab-btn" data-tab="group-tab">班ごとビュー</button>
+    </div>
+
+    <div id="student-tab" class="tab-content active">
+      <div id="student-view-grid"></div>
+    </div>
+
+    <div id="group-tab" class="tab-content">
+      <div id="group-view-container"></div>
+    </div>
+
+    <div id="absent-footer"></div>
+
+    <div class="result-actions">
+      <button class="btn btn-primary" id="reshuffle-btn">もう一度シャッフル ↺</button>
+      <button class="btn btn-secondary" id="back-setup-result-btn">◀ 設定に戻る</button>
+      <button class="btn btn-secondary" id="pdf-btn">PDF ダウンロード ⬇</button>
+    </div>
+  </div>
+
+</div>
+
+
+<script>
+// ══════════════════════════════════════════════
+//  状態
+// ══════════════════════════════════════════════
+const GROUP_LABELS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+
+const state = {
+  totalStudents: 42,
+  absentees: new Set(),
+  numGroups: 6,
+  groupSizes: [],       // 各班の人数 [n1, n2, ...]
+  assignment: {},       // 出席番号 → 班index (0-based)
+  rouletteState: 'idle', // 'idle' | 'running' | 'stopped'
+  currentTab: 'student-tab',
+  timer: null,
+};
+
+// ══════════════════════════════════════════════
+//  ユーティリティ
+// ══════════════════════════════════════════════
+function shuffle(arr) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
+function presentStudents() {
+  const arr = [];
+  for (let i = 1; i <= state.totalStudents; i++) {
+    if (!state.absentees.has(i)) arr.push(i);
+  }
+  return arr;
+}
+
+function groupLabel(idx) {
+  return GROUP_LABELS[idx] || String(idx + 1);
+}
+
+// ══════════════════════════════════════════════
+//  グループサイズ自動計算
+// ══════════════════════════════════════════════
+function autoGroupSizes() {
+  const n = presentStudents().length;
+  const g = state.numGroups;
+  if (g <= 0) return [];
+  const base = Math.floor(n / g);
+  const rem  = n % g;
+  const sizes = Array.from({ length: g }, (_, i) => base + (i < rem ? 1 : 0));
+  return sizes;
+}
+
+function totalGroupSize() {
+  return state.groupSizes.reduce((s, v) => s + v, 0);
+}
+
+// ══════════════════════════════════════════════
+//  割り当てロジック
+// ══════════════════════════════════════════════
+function assignGroups() {
+  const students = shuffle([...presentStudents()]);
+  const assignment = {};
+  let idx = 0;
+  for (let g = 0; g < state.groupSizes.length; g++) {
+    for (let k = 0; k < state.groupSizes[g]; k++) {
+      if (idx >= students.length) break;
+      assignment[students[idx++]] = g;
+    }
+  }
+  state.assignment = assignment;
+}
+
+// ══════════════════════════════════════════════
+//  設定モード レンダリング
+// ══════════════════════════════════════════════
+function renderAbsentGrid() {
+  const grid = document.getElementById('absent-grid');
+  grid.innerHTML = '';
+  for (let i = 1; i <= state.totalStudents; i++) {
+    const btn = document.createElement('button');
+    btn.className = 'absent-btn' + (state.absentees.has(i) ? ' absent' : '');
+    btn.textContent = i;
+    btn.dataset.num = i;
+    btn.addEventListener('click', () => {
+      const num = +btn.dataset.num;
+      if (state.absentees.has(num)) {
+        state.absentees.delete(num);
+        btn.classList.remove('absent');
+      } else {
+        state.absentees.add(num);
+        btn.classList.add('absent');
+      }
+      state.groupSizes = autoGroupSizes();
+      renderGroupSizes();
+      updatePresentLabel();
+      checkTotalBalance();
+    });
+    grid.appendChild(btn);
+  }
+}
+
+function updatePresentLabel() {
+  const label = document.getElementById('present-count-label');
+  const n = presentStudents().length;
+  label.textContent = `（在籍 ${n} 人）`;
+}
+
+function renderGroupSizes() {
+  const container = document.getElementById('group-sizes-container');
+  container.innerHTML = '';
+
+  for (let g = 0; g < state.numGroups; g++) {
+    const item = document.createElement('div');
+    item.className = 'group-size-item';
+
+    const label = document.createElement('span');
+    label.className = 'group-size-label';
+    label.textContent = groupLabel(g) + '班';
+
+    const decBtn = document.createElement('button');
+    decBtn.className = 'stepper-btn';
+    decBtn.textContent = '−';
+
+    const inp = document.createElement('input');
+    inp.type = 'number';
+    inp.className = 'group-size-input';
+    inp.min = 0;
+    inp.max = state.totalStudents;
+    inp.value = state.groupSizes[g] ?? 0;
+
+    const incBtn = document.createElement('button');
+    incBtn.className = 'stepper-btn';
+    incBtn.textContent = '+';
+
+    const groupIndex = g;
+    decBtn.addEventListener('click', () => {
+      if (state.groupSizes[groupIndex] > 0) {
+        state.groupSizes[groupIndex]--;
+        inp.value = state.groupSizes[groupIndex];
+        checkTotalBalance();
+      }
+    });
+    incBtn.addEventListener('click', () => {
+      state.groupSizes[groupIndex]++;
+      inp.value = state.groupSizes[groupIndex];
+      checkTotalBalance();
+    });
+    inp.addEventListener('input', () => {
+      const v = parseInt(inp.value);
+      if (!isNaN(v) && v >= 0) {
+        state.groupSizes[groupIndex] = v;
+        checkTotalBalance();
+      }
+    });
+
+    item.append(label, decBtn, inp, incBtn);
+    container.appendChild(item);
+  }
+}
+
+function checkTotalBalance() {
+  const el = document.getElementById('total-check');
+  const present = presentStudents().length;
+  const total   = totalGroupSize();
+  el.textContent = `在籍 ${present} 人 ／ グループ合計 ${total} 人`;
+  if (total === present) {
+    el.className = 'ok';
+  } else if (Math.abs(total - present) <= 2) {
+    el.className = 'warn';
+  } else {
+    el.className = 'err';
+  }
+  // 開始ボタンの有効/無効
+  document.getElementById('start-roulette-btn').disabled = (total !== present || state.numGroups <= 0);
+}
+
+// ══════════════════════════════════════════════
+//  設定モード — イベント
+// ══════════════════════════════════════════════
+function setupTotalStepper() {
+  const inp  = document.getElementById('total-input');
+  const dec  = document.getElementById('total-dec');
+  const inc  = document.getElementById('total-inc');
+
+  const update = (val) => {
+    val = Math.max(1, Math.min(200, val));
+    state.totalStudents = val;
+    inp.value = val;
+    // 欠席者のうち上限超えたものを削除
+    [...state.absentees].forEach(n => { if (n > val) state.absentees.delete(n); });
+    state.groupSizes = autoGroupSizes();
+    renderAbsentGrid();
+    renderGroupSizes();
+    updatePresentLabel();
+    checkTotalBalance();
+  };
+
+  dec.addEventListener('click', () => update(+inp.value - 1));
+  inc.addEventListener('click', () => update(+inp.value + 1));
+  inp.addEventListener('input', () => {
+    const v = parseInt(inp.value);
+    if (!isNaN(v)) update(v);
+  });
+}
+
+function setupGroupStepper() {
+  const inp  = document.getElementById('group-count-input');
+  const dec  = document.getElementById('group-dec');
+  const inc  = document.getElementById('group-inc');
+
+  const update = (val) => {
+    val = Math.max(1, Math.min(30, val));
+    state.numGroups = val;
+    inp.value = val;
+    state.groupSizes = autoGroupSizes();
+    renderGroupSizes();
+    checkTotalBalance();
+  };
+
+  dec.addEventListener('click', () => update(+inp.value - 1));
+  inc.addEventListener('click', () => update(+inp.value + 1));
+  inp.addEventListener('input', () => {
+    const v = parseInt(inp.value);
+    if (!isNaN(v)) update(v);
+  });
+}
+
+// ══════════════════════════════════════════════
+//  ページ遷移
+// ══════════════════════════════════════════════
+function showPage(id) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+function goToRoulette() {
+  // idle 状態にリセット
+  state.rouletteState = 'idle';
+  state.assignment = {};
+
+  const n  = presentStudents().length;
+  const g  = state.numGroups;
+  document.getElementById('roulette-title').textContent =
+    `在籍 ${n} 人 → ${g} グループ`;
+
+  document.getElementById('idle-view').style.display   = 'flex';
+  document.getElementById('roulette-view').classList.remove('visible');
+  document.getElementById('result-area').classList.remove('visible');
+
+  showPage('page-roulette');
+}
+
+function goToSetup() {
+  if (state.timer) { clearInterval(state.timer); state.timer = null; }
+  showPage('page-setup');
+}
+
+// ══════════════════════════════════════════════
+//  ルーレットグリッド描画
+// ══════════════════════════════════════════════
+function buildRouletteGrid() {
+  const container = document.getElementById('student-roulette-grid');
+  container.innerHTML = '';
+  for (let i = 1; i <= state.totalStudents; i++) {
+    const cell = document.createElement('div');
+    cell.className = 'sr-cell' + (state.absentees.has(i) ? ' absent-cell' : '');
+    cell.id = `sr-${i}`;
+
+    const numEl = document.createElement('div');
+    numEl.className = 'sr-num';
+    numEl.textContent = i;
+
+    const grpEl = document.createElement('div');
+    grpEl.className = 'sr-group';
+    grpEl.id = `srg-${i}`;
+    grpEl.textContent = state.absentees.has(i) ? '欠席' : '?';
+
+    cell.append(numEl, grpEl);
+    container.appendChild(cell);
+  }
+}
+
+function updateRouletteGrid() {
+  for (let i = 1; i <= state.totalStudents; i++) {
+    if (state.absentees.has(i)) continue;
+    const el = document.getElementById(`srg-${i}`);
+    if (el) {
+      const gIdx = state.assignment[i];
+      el.textContent = gIdx !== undefined ? groupLabel(gIdx) + '班' : '?';
+    }
+  }
+}
+
+// ══════════════════════════════════════════════
+//  ルーレット制御
+// ══════════════════════════════════════════════
+function startRoulette() {
+  state.rouletteState = 'running';
+  document.getElementById('idle-view').style.display = 'none';
+  document.getElementById('roulette-view').classList.add('visible');
+  document.getElementById('result-area').classList.remove('visible');
+
+  buildRouletteGrid();
+
+  state.timer = setInterval(() => {
+    assignGroups();
+    updateRouletteGrid();
+  }, 100);
+}
+
+function stopRoulette() {
+  if (state.timer) { clearInterval(state.timer); state.timer = null; }
+  state.rouletteState = 'stopped';
+
+  // 最終確定 → confirmed スタイル
+  document.querySelectorAll('.sr-cell:not(.absent-cell)').forEach(cell => {
+    const grpEl = cell.querySelector('.sr-group');
+    if (grpEl) grpEl.classList.add('confirmed');
+  });
+
+  // 少しディレイ後に結果表示
+  setTimeout(() => {
+    document.getElementById('roulette-view').classList.remove('visible');
+    document.getElementById('result-area').classList.add('visible');
+    renderStudentView();
+    renderGroupView();
+    renderAbsentFooter();
+  }, 400);
+}
+
+// ══════════════════════════════════════════════
+//  生徒ビュー
+// ══════════════════════════════════════════════
+function renderStudentView() {
+  const grid = document.getElementById('student-view-grid');
+  grid.innerHTML = '';
+
+  for (let i = 1; i <= state.totalStudents; i++) {
+    const cell = document.createElement('div');
+    cell.className = 'sv-cell' + (state.absentees.has(i) ? ' absent-cell' : '');
+
+    const numEl = document.createElement('div');
+    numEl.className = 'sv-num';
+    numEl.textContent = i;
+
+    const arrowEl = document.createElement('div');
+    arrowEl.className = 'sv-arrow';
+    arrowEl.textContent = '↓';
+
+    const grpEl = document.createElement('div');
+    grpEl.className = 'sv-group';
+    if (state.absentees.has(i)) {
+      grpEl.textContent = '欠席';
+    } else {
+      const gIdx = state.assignment[i];
+      grpEl.textContent = gIdx !== undefined ? groupLabel(gIdx) + '班' : '?';
+    }
+
+    cell.append(numEl, arrowEl, grpEl);
+    grid.appendChild(cell);
+  }
+}
+
+// ══════════════════════════════════════════════
+//  班ごとビュー
+// ══════════════════════════════════════════════
+function renderGroupView() {
+  const container = document.getElementById('group-view-container');
+  container.innerHTML = '';
+
+  // 班ごとにメンバー集計
+  const groups = Array.from({ length: state.numGroups }, () => []);
+  for (let i = 1; i <= state.totalStudents; i++) {
+    if (!state.absentees.has(i)) {
+      const gIdx = state.assignment[i];
+      if (gIdx !== undefined) groups[gIdx].push(i);
+    }
+  }
+
+  groups.forEach((members, gIdx) => {
+    const card = document.createElement('div');
+    card.className = 'group-card';
+
+    const title = document.createElement('div');
+    title.className = 'group-card-title';
+    title.textContent = groupLabel(gIdx) + '班';
+    card.appendChild(title);
+
+    if (members.length === 0) {
+      const empty = document.createElement('div');
+      empty.style.color = 'var(--text-muted)';
+      empty.style.fontSize = '0.85rem';
+      empty.textContent = '(なし)';
+      card.appendChild(empty);
+    } else if (members.length === 1) {
+      const wrap = document.createElement('div');
+      const m = document.createElement('div');
+      m.className = 'single-member';
+      m.textContent = members[0];
+      wrap.appendChild(m);
+      card.appendChild(wrap);
+    } else if (members.length === 2) {
+      const wrap = document.createElement('div');
+      wrap.className = 'pair-layout';
+      members.forEach(num => {
+        const m = document.createElement('div');
+        m.className = 'pair-member';
+        m.textContent = num;
+        wrap.appendChild(m);
+      });
+      card.appendChild(wrap);
+    } else {
+      // 3人以上: 円形配置
+      const wrap = document.createElement('div');
+      wrap.className = 'circle-layout';
+      const n   = members.length;
+      const r   = 46; // 半径px (circle-layout 140px / 2 - 24px)
+      const cx  = 70;
+      const cy  = 70;
+      members.forEach((num, k) => {
+        const angle = (2 * Math.PI * k / n) - Math.PI / 2;
+        const x = cx + r * Math.cos(angle);
+        const y = cy + r * Math.sin(angle);
+        const m = document.createElement('div');
+        m.className = 'circle-member';
+        m.textContent = num;
+        m.style.left = `${x}px`;
+        m.style.top  = `${y}px`;
+        wrap.appendChild(m);
+      });
+      card.appendChild(wrap);
+    }
+
+    container.appendChild(card);
+  });
+}
+
+function renderAbsentFooter() {
+  const el = document.getElementById('absent-footer');
+  if (state.absentees.size === 0) {
+    el.textContent = '';
+    return;
+  }
+  const sorted = [...state.absentees].sort((a, b) => a - b);
+  el.textContent = `欠席: ${sorted.join(', ')}`;
+}
+
+// ══════════════════════════════════════════════
+//  タブ切替
+// ══════════════════════════════════════════════
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const tabId = btn.dataset.tab;
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById(tabId).classList.add('active');
+    state.currentTab = tabId;
+  });
+});
+
+// ══════════════════════════════════════════════
+//  PDF 生成
+// ══════════════════════════════════════════════
+function downloadPDF() {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+
+  const now  = new Date();
+  const pad  = n => String(n).padStart(2, '0');
+  const ts   = `${now.getFullYear()}/${pad(now.getMonth()+1)}/${pad(now.getDate())} ` +
+               `${pad(now.getHours())}:${pad(now.getMinutes())}`;
+  const fname= `group_${now.getFullYear()}${pad(now.getMonth()+1)}${pad(now.getDate())}` +
+               `${pad(now.getHours())}${pad(now.getMinutes())}.pdf`;
+
+  const W = 297, H = 210; // A4 横
+
+  // ── Page 1: 生徒ビュー ──
+  doc.setFillColor(32, 33, 36);
+  doc.rect(0, 0, W, H, 'F');
+
+  // タイトル
+  doc.setFontSize(14);
+  doc.setTextColor(138, 180, 248);
+  doc.text('グループ分けルーレット — 生徒ビュー', 10, 12);
+
+  doc.setFontSize(9);
+  doc.setTextColor(154, 160, 166);
+  doc.text(ts, W - 10, 12, { align: 'right' });
+
+  // ヘッダー行
+  doc.setFontSize(9);
+  doc.setTextColor(154, 160, 166);
+  doc.text('出席番号  →  班', 10, 20);
+
+  // 生徒リスト（4列）
+  const colWidth  = 60;
+  const rowHeight = 7;
+  const startX    = 10;
+  const startY    = 26;
+  const maxRows   = 22;
+
+  let col = 0, row = 0;
+  for (let i = 1; i <= state.totalStudents; i++) {
+    const x = startX + col * colWidth;
+    const y = startY + row * rowHeight;
+
+    if (state.absentees.has(i)) {
+      doc.setTextColor(95, 99, 104);
+      doc.setFontSize(10);
+      doc.text(`${String(i).padStart(3,' ')}  欠席`, x, y);
+    } else {
+      const gIdx  = state.assignment[i];
+      const gName = gIdx !== undefined ? groupLabel(gIdx) + '班' : '?';
+      doc.setTextColor(129, 201, 149);
+      doc.setFontSize(11);
+      doc.text(`${String(i).padStart(3,' ')}  →  ${gName}`, x, y);
+    }
+
+    row++;
+    if (row >= maxRows) { row = 0; col++; }
+  }
+
+  // 欠席者一覧
+  if (state.absentees.size > 0) {
+    const sorted = [...state.absentees].sort((a, b) => a - b);
+    doc.setFontSize(9);
+    doc.setTextColor(154, 160, 166);
+    doc.text(`欠席者: ${sorted.join(', ')}`, 10, H - 28);
+  }
+
+  // 教師メモ欄
+  doc.setFontSize(9);
+  doc.setTextColor(154, 160, 166);
+  doc.text('メモ:', 10, H - 20);
+  doc.setDrawColor(95, 99, 104);
+  doc.line(22, H - 20, W - 10, H - 20);
+  doc.line(10, H - 13, W - 10, H - 13);
+  doc.line(10, H - 6,  W - 10, H - 6);
+
+  // ── Page 2: 班ごとビュー ──
+  doc.addPage();
+  doc.setFillColor(32, 33, 36);
+  doc.rect(0, 0, W, H, 'F');
+
+  doc.setFontSize(14);
+  doc.setTextColor(138, 180, 248);
+  doc.text('グループ分けルーレット — 班ごとビュー', 10, 12);
+
+  doc.setFontSize(9);
+  doc.setTextColor(154, 160, 166);
+  doc.text(ts, W - 10, 12, { align: 'right' });
+
+  // 班カード配置
+  const groups = Array.from({ length: state.numGroups }, () => []);
+  for (let i = 1; i <= state.totalStudents; i++) {
+    if (!state.absentees.has(i)) {
+      const gIdx = state.assignment[i];
+      if (gIdx !== undefined) groups[gIdx].push(i);
+    }
+  }
+
+  const cardsPerRow = Math.min(state.numGroups, 6);
+  const cardW  = (W - 20) / cardsPerRow;
+  const cardH  = state.numGroups > 6 ? 70 : 85;
+  const startGX = 10;
+  const startGY = 20;
+
+  groups.forEach((members, gIdx) => {
+    const col = gIdx % cardsPerRow;
+    const row = Math.floor(gIdx / cardsPerRow);
+    const cx  = startGX + col * cardW;
+    const cy  = startGY + row * (cardH + 10);
+
+    // カード外枠
+    doc.setDrawColor(95, 99, 104);
+    doc.setFillColor(41, 43, 47);
+    doc.roundedRect(cx, cy, cardW - 4, cardH, 3, 3, 'FD');
+
+    // 班名
+    doc.setFontSize(12);
+    doc.setTextColor(138, 180, 248);
+    doc.text(groupLabel(gIdx) + '班', cx + (cardW - 4) / 2, cy + 9, { align: 'center' });
+
+    // メンバー円形配置
+    const n  = members.length;
+    const cr = (Math.min(cardW - 4, cardH) / 2) * 0.55;
+    const mcx = cx + (cardW - 4) / 2;
+    const mcy = cy + cardH / 2 + 4;
+
+    if (n === 0) {
+      // nothing
+    } else if (n === 1) {
+      doc.setFillColor(53, 54, 58);
+      doc.setDrawColor(129, 201, 149);
+      doc.circle(mcx, mcy, 7, 'FD');
+      doc.setFontSize(9);
+      doc.setTextColor(232, 234, 237);
+      doc.text(String(members[0]), mcx, mcy + 3, { align: 'center' });
+    } else if (n === 2) {
+      [-1, 1].forEach((dir, k) => {
+        const px = mcx + dir * 10;
+        doc.setFillColor(53, 54, 58);
+        doc.setDrawColor(129, 201, 149);
+        doc.circle(px, mcy, 6, 'FD');
+        doc.setFontSize(9);
+        doc.setTextColor(232, 234, 237);
+        doc.text(String(members[k]), px, mcy + 3, { align: 'center' });
+      });
+    } else {
+      members.forEach((num, k) => {
+        const angle = (2 * Math.PI * k / n) - Math.PI / 2;
+        const px = mcx + cr * Math.cos(angle);
+        const py = mcy + cr * Math.sin(angle);
+        doc.setFillColor(53, 54, 58);
+        doc.setDrawColor(129, 201, 149);
+        doc.circle(px, py, 6, 'FD');
+        doc.setFontSize(8);
+        doc.setTextColor(232, 234, 237);
+        doc.text(String(num), px, py + 3, { align: 'center' });
+      });
+    }
+
+    // メモライン
+    const memoY = cy + cardH - 10;
+    doc.setDrawColor(95, 99, 104);
+    doc.setFontSize(7);
+    doc.setTextColor(95, 99, 104);
+    doc.text('memo', cx + 2, memoY - 1);
+    doc.line(cx + 10, memoY, cx + cardW - 6, memoY);
+  });
+
+  // 欠席者
+  if (state.absentees.size > 0) {
+    const sorted = [...state.absentees].sort((a, b) => a - b);
+    doc.setFontSize(8);
+    doc.setTextColor(95, 99, 104);
+    doc.text(`欠席: ${sorted.join(', ')}`, 10, H - 6);
+  }
+
+  doc.save(fname);
+}
+
+// ══════════════════════════════════════════════
+//  ボタンイベント登録
+// ══════════════════════════════════════════════
+document.getElementById('start-roulette-btn').addEventListener('click', () => {
+  if (totalGroupSize() !== presentStudents().length) return;
+  goToRoulette();
+});
+
+document.getElementById('back-to-setup-btn').addEventListener('click', goToSetup);
+document.getElementById('back-setup-result-btn').addEventListener('click', goToSetup);
+
+document.getElementById('big-start-btn').addEventListener('click', startRoulette);
+document.getElementById('big-stop-btn').addEventListener('click', stopRoulette);
+
+document.getElementById('reshuffle-btn').addEventListener('click', () => {
+  goToRoulette();
+});
+
+document.getElementById('pdf-btn').addEventListener('click', downloadPDF);
+
+// ══════════════════════════════════════════════
+//  初期化
+// ══════════════════════════════════════════════
+function init() {
+  state.groupSizes = autoGroupSizes();
+  renderAbsentGrid();
+  renderGroupSizes();
+  updatePresentLabel();
+  checkTotalBalance();
+  setupTotalStepper();
+  setupGroupStepper();
+}
+
+init();
+</script>
+</body>
+</html>
