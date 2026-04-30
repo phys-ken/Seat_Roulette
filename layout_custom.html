@@ -478,7 +478,7 @@
       
       // 教師目線座席表の開始位置
       const teacherStartRow = ROWS + 4;
-      aoa[teacherStartRow - 1][centerCol] = "教卓(教師目線)";
+      aoa[teacherStartRow + ROWS][centerCol] = "教卓(教師目線)";
       
       // 教師目線座席表 - 180度回転
       for (let r = 0; r < ROWS; r++) {
