@@ -12,7 +12,7 @@
 | [layout_7by6.html](https://phys-ken.github.io/Seat_Roulette/layout_7by6.html) | 座席シャッフル（7列×6行） | 最大42席 |
 | [layout_7by7.html](https://phys-ken.github.io/Seat_Roulette/layout_7by7.html) | 座席シャッフル（7列×7行） | 最大49席 |
 | [layout_custom.html](https://phys-ken.github.io/Seat_Roulette/layout_custom.html) | 座席シャッフル（行列数を自由に設定） | 最大180席（12×15） |
-| [group_roulette.html](https://phys-ken.github.io/Seat_Roulette/group_roulette.html) | グループ分けルーレット | 最大42人 |
+| [group_roulette.html](https://phys-ken.github.io/Seat_Roulette/group_roulette.html) | グループ分けルーレット | 最大200人・最大30グループ |
 
 ---
 
