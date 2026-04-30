@@ -1,0 +1,13 @@
+# ローカル開発用ファイル (git管理外)
+_dev_server.py
+_fix_*.py
+_new_*.js
+_test_*.html
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+*.swp

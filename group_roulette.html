@@ -5,6 +5,53 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>グループ分けルーレット</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <style>
+    /* ── 印刷用隠しエリア ── */
+    #pdf-print-area {
+      position: fixed; left: -9999px; top: 0; pointer-events: none;
+      font-family: 'Meiryo', 'Yu Gothic', 'Hiragino Sans', 'Noto Sans JP', sans-serif;
+    }
+    .pdf-page {
+      width: 1123px; height: 794px; background: #fff; color: #111;
+      padding: 28px 32px 20px; box-sizing: border-box; overflow: hidden;
+    }
+    .pdf-title {
+      font-size: 18px; font-weight: 700; color: #1a237e; margin-bottom: 8px;
+      border-bottom: 2px solid #1a237e; padding-bottom: 4px;
+      display: flex; justify-content: space-between; align-items: baseline;
+    }
+    .pdf-title span { font-size: 11px; color: #666; font-weight: 400; }
+    .pdf-sv-table {
+      width: 100%; border-collapse: collapse; table-layout: fixed;
+      font-size: 14px;
+    }
+    .pdf-sv-table td {
+      border: 1px solid #ccc; text-align: center; vertical-align: middle;
+      height: 26px; overflow: hidden; font-weight: 700;
+    }
+    .pdf-sv-num { background: #f5f5f5; color: #333; width: 6%; }
+    .pdf-sv-grp { color: #1a237e; width: 8%; }
+    .pdf-sv-absent-num { background: #f5f5f5; color: #aaa; width: 6%; }
+    .pdf-sv-absent { color: #bbb; width: 8%; font-size: 11px; }
+    .pdf-sv-sep { border-right: 2px solid #888 !important; }
+    .pdf-absent-line {
+      font-size: 11px; color: #666; margin-top: 6px;
+    }
+    .pdf-gv-table {
+      width: 100%; border-collapse: collapse; table-layout: fixed;
+      font-size: 18px;
+    }
+    .pdf-gv-table th {
+      border: 2px solid #333; text-align: center; background: #1a237e;
+      color: #fff; font-weight: 700; height: 38px; font-size: 20px;
+    }
+    .pdf-gv-table td {
+      border: 1px solid #ccc; text-align: center; font-weight: 700;
+      color: #111; vertical-align: middle; height: 34px;
+    }
+    .pdf-gv-table td:empty { background: #fafafa; }
+  </style>
   <style>
     :root {
       --bg:      #1a1a1a;
@@ -177,13 +224,13 @@
     }
     .sr-td-num {
       color: var(--muted); font-weight: 700;
-      font-size: clamp(0.45rem, 0.95vw, 0.8rem);
-      width: 3%; background: #1e1e1e;
+      font-size: clamp(0.85rem, 2.2vw, 1.8rem);
+      width: 6%; background: #1e1e1e;
     }
     .sr-td-grp {
       font-weight: 700;
       font-size: clamp(0.85rem, 2.2vw, 1.8rem);
-      color: var(--yellow); width: 11%;
+      color: var(--yellow); width: 8%;
     }
     .sr-absent    { color: #2e2e2e !important; }
     .sr-absent-grp { color: #2e2e2e !important; font-size: 0.6rem !important; }
@@ -219,13 +266,13 @@
     }
     .sv-td-num {
       color: var(--muted); font-weight: 700;
-      font-size: clamp(0.45rem, 0.95vw, 0.8rem);
-      width: 3%; background: #1e1e1e;
+      font-size: clamp(0.85rem, 2.1vw, 1.75rem);
+      width: 6%; background: #1e1e1e;
     }
     .sv-td-grp {
       font-weight: 700;
       font-size: clamp(0.85rem, 2.1vw, 1.75rem);
-      color: #fff; width: 11%;
+      color: #fff; width: 8%;
     }
     .sv-absent-num { color: #2e2e2e !important; }
     .sv-absent     { color: #444 !important; font-size: 0.6rem !important; }
@@ -239,14 +286,16 @@
     }
     .gv-th {
       font-weight: 700;
-      font-size: clamp(1rem, 2.5vw, 2.2rem);
+      font-size: clamp(1.1rem, 3vw, 2.8rem);
       color: var(--yellow); background: var(--surface);
       border-bottom: 2px solid #484848 !important;
+      padding: 0 !important;
     }
     .gv-td {
       font-weight: 700;
-      font-size: clamp(0.95rem, 2.3vw, 2rem);
+      font-size: clamp(1.1rem, 3vw, 2.8rem);
       color: #fff; background: var(--bg);
+      padding: 0 !important;
     }
     .gv-td:empty { background: #111; }
 
@@ -809,183 +858,128 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
 // ══════════════════════════════════════════════
 //  PDF 生成
 // ══════════════════════════════════════════════
-function downloadPDF() {
-  const { jsPDF } = window.jspdf;
-  const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+async function downloadPDF() {
+  const btn = document.getElementById('pdf-btn');
+  btn.disabled = true;
+  btn.textContent = '生成中…';
 
-  const now  = new Date();
-  const pad  = n => String(n).padStart(2, '0');
-  const ts   = `${now.getFullYear()}/${pad(now.getMonth()+1)}/${pad(now.getDate())} ` +
-               `${pad(now.getHours())}:${pad(now.getMinutes())}`;
-  const fname= `group_${now.getFullYear()}${pad(now.getMonth()+1)}${pad(now.getDate())}` +
-               `${pad(now.getHours())}${pad(now.getMinutes())}.pdf`;
+  const now = new Date();
+  const pad = n => String(n).padStart(2, '0');
+  const ts  = `${now.getFullYear()}/${pad(now.getMonth()+1)}/${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}`;
+  const fname = `group_${now.getFullYear()}${pad(now.getMonth()+1)}${pad(now.getDate())}${pad(now.getHours())}${pad(now.getMinutes())}.pdf`;
 
-  const W = 297, H = 210; // A4 横
+  const TABLE_ROWS_PDF = 6;
 
-  // ── Page 1: 生徒ビュー ──
-  doc.setFillColor(32, 33, 36);
-  doc.rect(0, 0, W, H, 'F');
+  // ─── Page1: 生徒ビュー ───
+  const page1 = document.getElementById('pdf-page-1');
+  page1.innerHTML = '';
+  const title1 = document.createElement('div');
+  title1.className = 'pdf-title';
+  title1.innerHTML = `グループ分けルーレット — 生徒ビュー <span>${ts}</span>`;
+  page1.appendChild(title1);
 
-  // タイトル
-  doc.setFontSize(14);
-  doc.setTextColor(138, 180, 248);
-  doc.text('グループ分けルーレット — 生徒ビュー', 10, 12);
-
-  doc.setFontSize(9);
-  doc.setTextColor(154, 160, 166);
-  doc.text(ts, W - 10, 12, { align: 'right' });
-
-  // ヘッダー行
-  doc.setFontSize(9);
-  doc.setTextColor(154, 160, 166);
-  doc.text('出席番号  →  班', 10, 20);
-
-  // 生徒リスト（4列）
-  const colWidth  = 60;
-  const rowHeight = 7;
-  const startX    = 10;
-  const startY    = 26;
-  const maxRows   = 22;
-
-  let col = 0, row = 0;
-  for (let i = 1; i <= state.totalStudents; i++) {
-    const x = startX + col * colWidth;
-    const y = startY + row * rowHeight;
-
-    if (state.absentees.has(i)) {
-      doc.setTextColor(95, 99, 104);
-      doc.setFontSize(10);
-      doc.text(`${String(i).padStart(3,' ')}  欠席`, x, y);
-    } else {
-      const gIdx  = state.assignment[i];
-      const gName = gIdx !== undefined ? groupLabel(gIdx) + '班' : '?';
-      doc.setTextColor(129, 201, 149);
-      doc.setFontSize(11);
-      doc.text(`${String(i).padStart(3,' ')}  →  ${gName}`, x, y);
+  const colGroups = Math.ceil(state.totalStudents / TABLE_ROWS_PDF);
+  const tbl1 = document.createElement('table');
+  tbl1.className = 'pdf-sv-table';
+  for (let r = 0; r < TABLE_ROWS_PDF; r++) {
+    const tr = document.createElement('tr');
+    for (let cg = 0; cg < colGroups; cg++) {
+      const num = cg * TABLE_ROWS_PDF + r + 1;
+      const tdN = document.createElement('td');
+      const tdG = document.createElement('td');
+      if (num > state.totalStudents) {
+        tdN.className = 'pdf-sv-num';
+        tdG.className = 'pdf-sv-grp';
+      } else if (state.absentees.has(num)) {
+        tdN.className = 'pdf-sv-absent-num'; tdN.textContent = num;
+        tdG.className = 'pdf-sv-absent'; tdG.textContent = '欠席';
+      } else {
+        tdN.className = 'pdf-sv-num'; tdN.textContent = num;
+        const gIdx = state.assignment[num];
+        tdG.className = 'pdf-sv-grp';
+        tdG.textContent = gIdx !== undefined ? groupLabel(gIdx) + '班' : '?';
+      }
+      if (cg < colGroups - 1) tdG.classList.add('pdf-sv-sep');
+      tr.append(tdN, tdG);
     }
-
-    row++;
-    if (row >= maxRows) { row = 0; col++; }
+    tbl1.appendChild(tr);
   }
+  page1.appendChild(tbl1);
 
-  // 欠席者一覧
   if (state.absentees.size > 0) {
     const sorted = [...state.absentees].sort((a, b) => a - b);
-    doc.setFontSize(9);
-    doc.setTextColor(154, 160, 166);
-    doc.text(`欠席者: ${sorted.join(', ')}`, 10, H - 28);
+    const absent = document.createElement('div');
+    absent.className = 'pdf-absent-line';
+    absent.textContent = '欠席者: ' + sorted.join(', ');
+    page1.appendChild(absent);
   }
 
-  // 教師メモ欄
-  doc.setFontSize(9);
-  doc.setTextColor(154, 160, 166);
-  doc.text('メモ:', 10, H - 20);
-  doc.setDrawColor(95, 99, 104);
-  doc.line(22, H - 20, W - 10, H - 20);
-  doc.line(10, H - 13, W - 10, H - 13);
-  doc.line(10, H - 6,  W - 10, H - 6);
+  // ─── Page2: 班ごとビュー ───
+  const page2 = document.getElementById('pdf-page-2');
+  page2.innerHTML = '';
+  const title2 = document.createElement('div');
+  title2.className = 'pdf-title';
+  title2.innerHTML = `グループ分けルーレット — 班ごとビュー <span>${ts}</span>`;
+  page2.appendChild(title2);
 
-  // ── Page 2: 班ごとビュー ──
-  doc.addPage();
-  doc.setFillColor(32, 33, 36);
-  doc.rect(0, 0, W, H, 'F');
-
-  doc.setFontSize(14);
-  doc.setTextColor(138, 180, 248);
-  doc.text('グループ分けルーレット — 班ごとビュー', 10, 12);
-
-  doc.setFontSize(9);
-  doc.setTextColor(154, 160, 166);
-  doc.text(ts, W - 10, 12, { align: 'right' });
-
-  // 班カード配置
   const groups = Array.from({ length: state.numGroups }, () => []);
   for (let i = 1; i <= state.totalStudents; i++) {
     if (!state.absentees.has(i)) {
-      const gIdx = state.assignment[i];
-      if (gIdx !== undefined) groups[gIdx].push(i);
+      const g = state.assignment[i];
+      if (g !== undefined) groups[g].push(i);
     }
   }
-
-  const cardsPerRow = Math.min(state.numGroups, 6);
-  const cardW  = (W - 20) / cardsPerRow;
-  const cardH  = state.numGroups > 6 ? 70 : 85;
-  const startGX = 10;
-  const startGY = 20;
-
-  groups.forEach((members, gIdx) => {
-    const col = gIdx % cardsPerRow;
-    const row = Math.floor(gIdx / cardsPerRow);
-    const cx  = startGX + col * cardW;
-    const cy  = startGY + row * (cardH + 10);
-
-    // カード外枠
-    doc.setDrawColor(95, 99, 104);
-    doc.setFillColor(41, 43, 47);
-    doc.roundedRect(cx, cy, cardW - 4, cardH, 3, 3, 'FD');
-
-    // 班名
-    doc.setFontSize(12);
-    doc.setTextColor(138, 180, 248);
-    doc.text(groupLabel(gIdx) + '班', cx + (cardW - 4) / 2, cy + 9, { align: 'center' });
-
-    // メンバー円形配置
-    const n  = members.length;
-    const cr = (Math.min(cardW - 4, cardH) / 2) * 0.55;
-    const mcx = cx + (cardW - 4) / 2;
-    const mcy = cy + cardH / 2 + 4;
-
-    if (n === 0) {
-      // nothing
-    } else if (n === 1) {
-      doc.setFillColor(53, 54, 58);
-      doc.setDrawColor(129, 201, 149);
-      doc.circle(mcx, mcy, 7, 'FD');
-      doc.setFontSize(9);
-      doc.setTextColor(232, 234, 237);
-      doc.text(String(members[0]), mcx, mcy + 3, { align: 'center' });
-    } else if (n === 2) {
-      [-1, 1].forEach((dir, k) => {
-        const px = mcx + dir * 10;
-        doc.setFillColor(53, 54, 58);
-        doc.setDrawColor(129, 201, 149);
-        doc.circle(px, mcy, 6, 'FD');
-        doc.setFontSize(9);
-        doc.setTextColor(232, 234, 237);
-        doc.text(String(members[k]), px, mcy + 3, { align: 'center' });
-      });
-    } else {
-      members.forEach((num, k) => {
-        const angle = (2 * Math.PI * k / n) - Math.PI / 2;
-        const px = mcx + cr * Math.cos(angle);
-        const py = mcy + cr * Math.sin(angle);
-        doc.setFillColor(53, 54, 58);
-        doc.setDrawColor(129, 201, 149);
-        doc.circle(px, py, 6, 'FD');
-        doc.setFontSize(8);
-        doc.setTextColor(232, 234, 237);
-        doc.text(String(num), px, py + 3, { align: 'center' });
-      });
-    }
-
-    // メモライン
-    const memoY = cy + cardH - 10;
-    doc.setDrawColor(95, 99, 104);
-    doc.setFontSize(7);
-    doc.setTextColor(95, 99, 104);
-    doc.text('memo', cx + 2, memoY - 1);
-    doc.line(cx + 10, memoY, cx + cardW - 6, memoY);
+  const maxM = Math.max(...groups.map(g => g.length), 1);
+  const tbl2 = document.createElement('table');
+  tbl2.className = 'pdf-gv-table';
+  const thead = document.createElement('thead');
+  const htr = document.createElement('tr');
+  groups.forEach((_, gi) => {
+    const th = document.createElement('th');
+    th.textContent = groupLabel(gi) + '班';
+    htr.appendChild(th);
   });
+  thead.appendChild(htr);
+  tbl2.appendChild(thead);
+  const tbody = document.createElement('tbody');
+  for (let r = 0; r < maxM; r++) {
+    const tr = document.createElement('tr');
+    groups.forEach(members => {
+      const td = document.createElement('td');
+      td.textContent = members[r] !== undefined ? String(members[r]) : '';
+      tr.appendChild(td);
+    });
+    tbody.appendChild(tr);
+  }
+  tbl2.appendChild(tbody);
+  page2.appendChild(tbl2);
 
-  // 欠席者
   if (state.absentees.size > 0) {
     const sorted = [...state.absentees].sort((a, b) => a - b);
-    doc.setFontSize(8);
-    doc.setTextColor(95, 99, 104);
-    doc.text(`欠席: ${sorted.join(', ')}`, 10, H - 6);
+    const absent = document.createElement('div');
+    absent.className = 'pdf-absent-line';
+    absent.textContent = '欠席者: ' + sorted.join(', ');
+    page2.appendChild(absent);
   }
 
-  doc.save(fname);
+  // ─── html2canvas → jsPDF ───
+  try {
+    const opts = { scale: 2, backgroundColor: '#ffffff', useCORS: true, logging: false };
+    const [c1, c2] = await Promise.all([
+      html2canvas(page1, opts),
+      html2canvas(page2, opts),
+    ]);
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+    const W = 297, H = 210;
+    doc.addImage(c1.toDataURL('image/jpeg', 0.97), 'JPEG', 0, 0, W, H);
+    doc.addPage();
+    doc.addImage(c2.toDataURL('image/jpeg', 0.97), 'JPEG', 0, 0, W, H);
+    doc.save(fname);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'PDF ⬇';
+  }
 }
 
 // ══════════════════════════════════════════════
@@ -1023,6 +1017,12 @@ function init() {
 
 init();
 </script>
+
+<!-- 印刷用隠しエリア (html2canvas でキャプチャ) -->
+<div id="pdf-print-area">
+  <div id="pdf-page-1" class="pdf-page"></div>
+  <div id="pdf-page-2" class="pdf-page"></div>
+</div>
 </body>
 </html>
 
