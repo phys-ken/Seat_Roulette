@@ -43,11 +43,15 @@
       font-size: 18px;
     }
     .pdf-gv-table th {
-      border: 2px solid #333; text-align: center; background: #1a237e;
+      border-top: 2px solid #333; border-bottom: 3px solid #333;
+      border-left: 3px solid #333; border-right: 3px solid #333;
+      text-align: center; background: #1a237e;
       color: #fff; font-weight: 700; height: 38px; font-size: 20px;
     }
     .pdf-gv-table td {
-      border: 1px solid #ccc; text-align: center; font-weight: 700;
+      border-top: 1px solid #ddd; border-bottom: 1px solid #ddd;
+      border-left: 3px solid #aaa; border-right: 3px solid #aaa;
+      text-align: center; font-weight: 700;
       color: #111; vertical-align: middle; height: 34px;
     }
     .pdf-gv-table td:empty { background: #fafafa; }
@@ -289,14 +293,17 @@
     /* 班ごとビュー表 */
     .gv-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
     .gv-table th, .gv-table td {
-      border: 1px solid #2a2a2a;
+      border-top: 1px solid #2a2a2a;
+      border-bottom: 1px solid #2a2a2a;
+      border-left: 3px solid #555;
+      border-right: 3px solid #555;
       text-align: center; vertical-align: middle; overflow: hidden;
     }
     .gv-th {
       font-weight: 700;
       font-size: clamp(1.1rem, 3vw, 2.8rem);
       color: var(--yellow); background: var(--surface);
-      border-bottom: 2px solid #484848 !important;
+      border-bottom: 3px solid #888 !important;
       padding: 0 !important;
     }
     .gv-td {
