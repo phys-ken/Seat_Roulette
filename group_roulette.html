@@ -545,7 +545,7 @@ function renderGroupSizes() {
 
     const label = document.createElement('span');
     label.className = 'group-size-label';
-    label.textContent = groupLabel(g) + '班';
+    label.textContent = groupLabel(g);
 
     const decBtn = document.createElement('button');
     decBtn.className = 'stepper-btn';
@@ -731,7 +731,7 @@ function updateRouletteGrid() {
     const el = document.getElementById(`srg-${i}`);
     if (el) {
       const gIdx = state.assignment[i];
-      el.textContent = gIdx !== undefined ? groupLabel(gIdx) + '班' : '?';
+      el.textContent = gIdx !== undefined ? groupLabel(gIdx) : '?';
     }
   }
 }
@@ -798,7 +798,7 @@ function renderStudentView() {
         tdNum.textContent = num;
         tdGrp.className = 'sv-td-grp';
         const gIdx = state.assignment[num];
-        tdGrp.textContent = gIdx !== undefined ? groupLabel(gIdx) + '班' : '?';
+        tdGrp.textContent = gIdx !== undefined ? groupLabel(gIdx) : '?';
       }
       if (cg < colGroups - 1) tdGrp.classList.add('sv-sep');
       if (cg > 0) tdNum.classList.add('sv-grp-start');
@@ -833,7 +833,7 @@ function renderGroupView() {
   groups.forEach((_, gIdx) => {
     const th = document.createElement('th');
     th.className = 'gv-th';
-    th.textContent = groupLabel(gIdx) + '班';
+    th.textContent = groupLabel(gIdx);
     headerTr.appendChild(th);
   });
   thead.appendChild(headerTr);
@@ -852,6 +852,66 @@ function renderGroupView() {
   }
   table.appendChild(tbody);
   container.appendChild(table);
+}
+
+// ══════════════════════════════════════════════
+//  スパイダー討論SVGヘルパー（PDF円卓ビュー用）
+// ══════════════════════════════════════════════
+function makeSpiderSVG(title, members, w, h) {
+  const ns  = 'http://www.w3.org/2000/svg';
+  const svg = document.createElementNS(ns, 'svg');
+  svg.setAttribute('viewBox', '0 0 240 240');
+  svg.setAttribute('width',  w);
+  svg.setAttribute('height', h);
+
+  const cx = 120, cy = 120, orbitR = 90, seatR = 18;
+
+  const mkEl = (tag, attrs) => {
+    const el = document.createElementNS(ns, tag);
+    Object.entries(attrs).forEach(([k, v]) => el.setAttribute(k, v));
+    return el;
+  };
+
+  // 背景
+  svg.appendChild(mkEl('rect', { width: 240, height: 240, fill: '#fff' }));
+
+  const n = members.length || 1;
+  // 各座席の座標
+  const pts = members.map((_, k) => {
+    const angle = (2 * Math.PI * k / n) - Math.PI / 2;
+    return { x: cx + orbitR * Math.cos(angle), y: cy + orbitR * Math.sin(angle) };
+  });
+
+  // 全ペアを結線（スパイダー討論スタイル）
+  for (let i = 0; i < n; i++) {
+    for (let j = i + 1; j < n; j++) {
+      svg.appendChild(mkEl('line', {
+        x1: pts[i].x, y1: pts[i].y,
+        x2: pts[j].x, y2: pts[j].y,
+        stroke: '#aaa', 'stroke-width': 1
+      }));
+    }
+  }
+
+  // グループラベル（中央）
+  const lbl = mkEl('text', { x: cx, y: cy + 7, 'text-anchor': 'middle',
+    fill: '#1d4ed8', 'font-size': 22, 'font-weight': 'bold', opacity: 0.25 });
+  lbl.textContent = title;
+  svg.appendChild(lbl);
+
+  // 座席（円＋番号）
+  members.forEach((num, k) => {
+    const { x: px, y: py } = pts[k];
+    svg.appendChild(mkEl('circle', { cx: px, cy: py, r: seatR,
+      fill: '#fff', stroke: '#1d4ed8', 'stroke-width': 2.2 }));
+    const fs = String(num).length > 1 ? 15 : 18;
+    const txt = mkEl('text', { x: px, y: py + 6, 'text-anchor': 'middle',
+      fill: '#111', 'font-size': fs, 'font-weight': 'bold' });
+    txt.textContent = String(num);
+    svg.appendChild(txt);
+  });
+
+  return svg;
 }
 
 // ══════════════════════════════════════════════
@@ -944,7 +1004,7 @@ function renderCircleView() {
   container.appendChild(wrap);
 
   groups.forEach((members, gIdx) => {
-    const svg = makeCircleGroupSVG(groupLabel(gIdx) + '\u73ed', members, size, size, true);
+    const svg = makeCircleGroupSVG(groupLabel(gIdx), members, size, size, true);
     svg.className = 'cv-group-svg';
     wrap.appendChild(svg);
   });
@@ -1016,7 +1076,7 @@ async function downloadPDF() {
         tdN.className = 'pdf-sv-num'; tdN.textContent = num;
         const gIdx = state.assignment[num];
         tdG.className = 'pdf-sv-grp';
-        tdG.textContent = gIdx !== undefined ? groupLabel(gIdx) + '班' : '?';
+        tdG.textContent = gIdx !== undefined ? groupLabel(gIdx) : '?';
       }
       if (cg < colGroups - 1) tdG.classList.add('pdf-sv-sep');
       tr.append(tdN, tdG);
@@ -1055,7 +1115,7 @@ async function downloadPDF() {
   const htr = document.createElement('tr');
   groups.forEach((_, gi) => {
     const th = document.createElement('th');
-    th.textContent = groupLabel(gi) + '班';
+    th.textContent = groupLabel(gi);
     htr.appendChild(th);
   });
   thead.appendChild(htr);
@@ -1108,7 +1168,7 @@ async function downloadPDF() {
     wrap3.style.gridTemplateColumns = `repeat(${cols3}, ${sz3}px)`;
     page3.appendChild(wrap3);
     groups3.forEach((members, gi) => {
-      const svg = makeCircleGroupSVG(groupLabel(gi) + '\u73ed', members, sz3, sz3, false);
+      const svg = makeSpiderSVG(groupLabel(gi), members, sz3, sz3);
       wrap3.appendChild(svg);
     });
   }
