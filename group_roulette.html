@@ -888,6 +888,15 @@ function makeSpiderSVG(title, members, w, h) {
   lbl.textContent = title;
   svg.appendChild(lbl);
 
+  // 多角形外枠線（隣同士のみ）
+  for (let i = 0; i < n; i++) {
+    const a = pts[i], b = pts[(i + 1) % n];
+    svg.appendChild(mkEl('line', {
+      x1: a.x, y1: a.y, x2: b.x, y2: b.y,
+      stroke: '#93c5fd', 'stroke-width': 1.5
+    }));
+  }
+
   // 座席（円＋番号）
   members.forEach((num, k) => {
     const { x: px, y: py } = pts[k];
@@ -937,11 +946,24 @@ function makeCircleGroupSVG(title, members, w, h, darkTheme) {
   svg.appendChild(lbl);
 
   const n = members.length || 1;
-  members.forEach((num, k) => {
+  const pts = members.map((_, k) => {
     const angle = (2 * Math.PI * k / n) - Math.PI / 2;
-    const px = cx + orbitR * Math.cos(angle);
-    const py = cy + orbitR * Math.sin(angle);
+    return { x: cx + orbitR * Math.cos(angle), y: cy + orbitR * Math.sin(angle) };
+  });
 
+  // 多角形外枠線（隣同士のみ）
+  const lineCol = darkTheme ? '#fdd663' : '#93c5fd';
+  for (let i = 0; i < n; i++) {
+    const a = pts[i], b = pts[(i + 1) % n];
+    svg.appendChild(mkEl('line', {
+      x1: a.x, y1: a.y, x2: b.x, y2: b.y,
+      stroke: lineCol, 'stroke-width': 1.5
+    }));
+  }
+
+  // 座席（円＋番号）
+  members.forEach((num, k) => {
+    const { x: px, y: py } = pts[k];
     svg.appendChild(mkEl('circle', { cx: px, cy: py, r: seatR,
       fill: seatFill, stroke: seatStk, 'stroke-width': 2.5 }));
 
