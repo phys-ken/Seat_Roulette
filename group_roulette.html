@@ -51,6 +51,12 @@
       color: #111; vertical-align: middle; height: 34px;
     }
     .pdf-gv-table td:empty { background: #fafafa; }
+    /* PDF 円卓ページ */
+    .pdf-cv-wrap {
+      display: grid; gap: 8px;
+      width: 100%; height: calc(100% - 38px);
+      align-items: center; justify-items: center;
+    }
   </style>
   <style>
     :root {
@@ -219,23 +225,24 @@
       width: 100%; border-collapse: collapse; table-layout: fixed;
     }
     .sr-table td {
-      border: 1px solid #252525;
+      border: 1px solid #444;
       text-align: center; vertical-align: middle; overflow: hidden;
     }
     .sr-td-num {
-      color: var(--muted); font-weight: 700;
-      font-size: clamp(0.85rem, 2.2vw, 1.8rem);
-      width: 6%; background: #1e1e1e;
+      color: #fff; font-weight: 700;
+      font-size: clamp(1.1rem, 2.9vw, 2.6rem);
+      width: 5%; background: #0d1117;
     }
     .sr-td-grp {
       font-weight: 700;
-      font-size: clamp(0.85rem, 2.2vw, 1.8rem);
-      color: var(--yellow); width: 8%;
+      font-size: clamp(1.1rem, 2.9vw, 2.6rem);
+      color: var(--yellow); width: 9%;
     }
-    .sr-absent    { color: #2e2e2e !important; }
-    .sr-absent-grp { color: #2e2e2e !important; font-size: 0.6rem !important; }
+    .sr-absent    { color: #555 !important; }
+    .sr-absent-grp { color: #555 !important; font-size: 0.75rem !important; }
     .sr-confirmed  { color: #fff !important; }
-    .sr-sep { border-right: 2px solid #3a3a3a !important; }
+    .sr-sep       { border-right: 3px solid #888 !important; }
+    .sr-grp-start { border-left:  3px solid #888 !important; }
 
     /* ─── 結果エリア ─── */
     #result-area {
@@ -265,18 +272,19 @@
       text-align: center; vertical-align: middle; overflow: hidden;
     }
     .sv-td-num {
-      color: var(--muted); font-weight: 700;
-      font-size: clamp(0.85rem, 2.1vw, 1.75rem);
-      width: 6%; background: #1e1e1e;
+      color: #fff; font-weight: 700;
+      font-size: clamp(1.1rem, 2.8vw, 2.5rem);
+      width: 5%; background: #0d1117;
     }
     .sv-td-grp {
       font-weight: 700;
-      font-size: clamp(0.85rem, 2.1vw, 1.75rem);
-      color: #fff; width: 8%;
+      font-size: clamp(1.1rem, 2.8vw, 2.5rem);
+      color: var(--yellow); width: 9%;
     }
-    .sv-absent-num { color: #2e2e2e !important; }
-    .sv-absent     { color: #444 !important; font-size: 0.6rem !important; }
-    .sv-sep { border-right: 2px solid #3a3a3a !important; }
+    .sv-absent-num { color: #555 !important; }
+    .sv-absent     { color: #555 !important; font-size: 0.75rem !important; }
+    .sv-sep       { border-right: 3px solid #888 !important; }
+    .sv-grp-start { border-left:  3px solid #888 !important; }
 
     /* 班ごとビュー表 */
     .gv-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
@@ -298,6 +306,13 @@
       padding: 0 !important;
     }
     .gv-td:empty { background: #111; }
+
+    /* 円卓ビュー */
+    .cv-wrap {
+      flex: 1; width: 100%; display: grid; gap: 4px;
+      align-content: center; justify-content: center; overflow: hidden;
+    }
+    .cv-group-svg { display: block; }
 
     /* 欠席フッター */
     #absent-footer {
@@ -384,6 +399,7 @@
     <div class="tab-row">
       <button class="tab-btn active" data-tab="student-tab">生徒ビュー</button>
       <button class="tab-btn" data-tab="group-tab">班ごとビュー</button>
+      <button class="tab-btn" data-tab="circle-tab">円卓ビュー</button>
     </div>
 
     <div id="student-tab" class="tab-content active">
@@ -392,6 +408,10 @@
 
     <div id="group-tab" class="tab-content">
       <div id="group-view-container"></div>
+    </div>
+
+    <div id="circle-tab" class="tab-content">
+      <div id="circle-view-container" style="display:flex;flex:1;min-height:0;overflow:hidden;width:100%;"></div>
     </div>
 
     <div id="absent-footer"></div>
@@ -697,6 +717,7 @@ function buildRouletteGrid() {
         tdGrp.textContent = '?';
       }
       if (cg < colGroups - 1) tdGrp.classList.add('sr-sep');
+      if (cg > 0) tdNum.classList.add('sr-grp-start');
       tr.append(tdNum, tdGrp);
     }
     table.appendChild(tr);
@@ -743,6 +764,7 @@ function stopRoulette() {
     document.getElementById('result-area').classList.add('visible');
     renderStudentView();
     renderGroupView();
+    renderCircleView();
     renderAbsentFooter();
   }, 400);
 }
@@ -779,6 +801,7 @@ function renderStudentView() {
         tdGrp.textContent = gIdx !== undefined ? groupLabel(gIdx) + '班' : '?';
       }
       if (cg < colGroups - 1) tdGrp.classList.add('sv-sep');
+      if (cg > 0) tdNum.classList.add('sv-grp-start');
       tr.append(tdNum, tdGrp);
     }
     table.appendChild(tr);
@@ -829,6 +852,102 @@ function renderGroupView() {
   }
   table.appendChild(tbody);
   container.appendChild(table);
+}
+
+// ══════════════════════════════════════════════
+//  円卓SVGヘルパー
+// ══════════════════════════════════════════════
+function makeCircleGroupSVG(title, members, w, h, darkTheme) {
+  const ns  = 'http://www.w3.org/2000/svg';
+  const svg = document.createElementNS(ns, 'svg');
+  svg.setAttribute('viewBox', '0 0 200 200');
+  svg.setAttribute('width',  w);
+  svg.setAttribute('height', h);
+
+  const cx = 100, cy = 100, tableR = 38, seatR = 15, orbitR = 78;
+
+  const bg        = darkTheme ? '#111'    : '#fff';
+  const tableFill = darkTheme ? '#1e3a5f' : '#dbeafe';
+  const tableStk  = darkTheme ? '#4fc3f7' : '#1d4ed8';
+  const labelCol  = darkTheme ? '#fdd663' : '#1d4ed8';
+  const seatFill  = darkTheme ? '#1e3a5f' : '#eff6ff';
+  const seatStk   = darkTheme ? '#4fc3f7' : '#1d4ed8';
+  const numCol    = darkTheme ? '#fff'    : '#111';
+  const lineCol   = darkTheme ? '#4fc3f7' : '#93c5fd';
+
+  const mkEl = (tag, attrs) => {
+    const el = document.createElementNS(ns, tag);
+    Object.entries(attrs).forEach(([k, v]) => el.setAttribute(k, v));
+    return el;
+  };
+
+  svg.appendChild(mkEl('rect', { width: 200, height: 200, fill: bg }));
+  svg.appendChild(mkEl('circle', { cx, cy, r: tableR, fill: tableFill, stroke: tableStk, 'stroke-width': 2.5 }));
+
+  const lbl = mkEl('text', { x: cx, y: cy + 8, 'text-anchor': 'middle',
+    fill: labelCol, 'font-size': 20, 'font-weight': 'bold' });
+  lbl.textContent = title;
+  svg.appendChild(lbl);
+
+  const n = members.length || 1;
+  members.forEach((num, k) => {
+    const angle = (2 * Math.PI * k / n) - Math.PI / 2;
+    const px = cx + orbitR * Math.cos(angle);
+    const py = cy + orbitR * Math.sin(angle);
+
+    svg.appendChild(mkEl('line', {
+      x1: cx + (tableR + 3) * Math.cos(angle),
+      y1: cy + (tableR + 3) * Math.sin(angle),
+      x2: px - (seatR + 1) * Math.cos(angle),
+      y2: py - (seatR + 1) * Math.sin(angle),
+      stroke: lineCol, 'stroke-width': 1.5
+    }));
+    svg.appendChild(mkEl('circle', { cx: px, cy: py, r: seatR,
+      fill: seatFill, stroke: seatStk, 'stroke-width': 2 }));
+
+    const txt = mkEl('text', { x: px, y: py + 6, 'text-anchor': 'middle',
+      fill: numCol, 'font-size': String(num).length > 1 ? 14 : 17,
+      'font-weight': 'bold' });
+    txt.textContent = String(num);
+    svg.appendChild(txt);
+  });
+
+  return svg;
+}
+
+// ══════════════════════════════════════════════
+//  円卓ビュー
+// ══════════════════════════════════════════════
+function renderCircleView() {
+  const container = document.getElementById('circle-view-container');
+  container.innerHTML = '';
+
+  const groups = Array.from({ length: state.numGroups }, () => []);
+  for (let i = 1; i <= state.totalStudents; i++) {
+    if (!state.absentees.has(i)) {
+      const gIdx = state.assignment[i];
+      if (gIdx !== undefined) groups[gIdx].push(i);
+    }
+  }
+
+  const cols = state.numGroups <= 4 ? state.numGroups
+             : state.numGroups <= 6 ? 3
+             : state.numGroups <= 9 ? 3 : 4;
+  const rows = Math.ceil(state.numGroups / cols);
+  const avW  = (window.innerWidth  - 16) / cols;
+  const avH  = (window.innerHeight - 148) / rows;
+  const size = Math.floor(Math.min(avW, avH)) - 6;
+
+  const wrap = document.createElement('div');
+  wrap.className = 'cv-wrap';
+  wrap.style.gridTemplateColumns = `repeat(${cols}, ${size}px)`;
+  container.appendChild(wrap);
+
+  groups.forEach((members, gIdx) => {
+    const svg = makeCircleGroupSVG(groupLabel(gIdx) + '\u73ed', members, size, size, true);
+    svg.className = 'cv-group-svg';
+    wrap.appendChild(svg);
+  });
 }
 
 function renderAbsentFooter() {
@@ -962,12 +1081,45 @@ async function downloadPDF() {
     page2.appendChild(absent);
   }
 
+  // ─── Page3: 円卓ビュー ───
+  const page3 = document.getElementById('pdf-page-3');
+  page3.innerHTML = '';
+  const title3 = document.createElement('div');
+  title3.className = 'pdf-title';
+  title3.innerHTML = `グループ分けルーレット — 円卓ビュー <span>${ts}</span>`;
+  page3.appendChild(title3);
+  {
+    const groups3 = Array.from({ length: state.numGroups }, () => []);
+    for (let i = 1; i <= state.totalStudents; i++) {
+      if (!state.absentees.has(i)) {
+        const g = state.assignment[i];
+        if (g !== undefined) groups3[g].push(i);
+      }
+    }
+    const cols3 = state.numGroups <= 4 ? state.numGroups
+                : state.numGroups <= 6 ? 3
+                : state.numGroups <= 9 ? 3 : 4;
+    const rows3  = Math.ceil(state.numGroups / cols3);
+    const cellW3 = Math.floor(1063 / cols3);
+    const cellH3 = Math.floor(726  / rows3);
+    const sz3    = Math.min(cellW3, cellH3) - 8;
+    const wrap3  = document.createElement('div');
+    wrap3.className = 'pdf-cv-wrap';
+    wrap3.style.gridTemplateColumns = `repeat(${cols3}, ${sz3}px)`;
+    page3.appendChild(wrap3);
+    groups3.forEach((members, gi) => {
+      const svg = makeCircleGroupSVG(groupLabel(gi) + '\u73ed', members, sz3, sz3, false);
+      wrap3.appendChild(svg);
+    });
+  }
+
   // ─── html2canvas → jsPDF ───
   try {
     const opts = { scale: 2, backgroundColor: '#ffffff', useCORS: true, logging: false };
-    const [c1, c2] = await Promise.all([
+    const [c1, c2, c3] = await Promise.all([
       html2canvas(page1, opts),
       html2canvas(page2, opts),
+      html2canvas(page3, opts),
     ]);
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
@@ -975,6 +1127,8 @@ async function downloadPDF() {
     doc.addImage(c1.toDataURL('image/jpeg', 0.97), 'JPEG', 0, 0, W, H);
     doc.addPage();
     doc.addImage(c2.toDataURL('image/jpeg', 0.97), 'JPEG', 0, 0, W, H);
+    doc.addPage();
+    doc.addImage(c3.toDataURL('image/jpeg', 0.97), 'JPEG', 0, 0, W, H);
     doc.save(fname);
   } finally {
     btn.disabled = false;
@@ -1022,6 +1176,7 @@ init();
 <div id="pdf-print-area">
   <div id="pdf-page-1" class="pdf-page"></div>
   <div id="pdf-page-2" class="pdf-page"></div>
+  <div id="pdf-page-3" class="pdf-page"></div>
 </div>
 </body>
 </html>
