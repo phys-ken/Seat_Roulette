@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="ja">
 <head>
   <meta charset="UTF-8" />
@@ -6,531 +6,263 @@
   <title>グループ分けルーレット</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <style>
-    /* ── CSS 変数（Google Dark Mode ベース） ── */
     :root {
-      --bg:        #202124;
-      --surface:   #292b2f;
-      --surface2:  #35363a;
-      --text:      #e8eaed;
-      --text-muted:#9aa0a6;
-      --accent:    #8ab4f8;
-      --green:     #81c995;
-      --red:       #ea4335;
-      --yellow:    #fdd663;
-      --btn-primary: #1a73e8;
-      --btn-stop:    #ea4335;
-      --border:    #5f6368;
-      --absent:    #5f6368;
+      --bg:      #1a1a1a;
+      --surface: #242424;
+      --surf2:   #2c2c2c;
+      --text:    #ffffff;
+      --muted:   #707070;
+      --accent:  #4fc3f7;
+      --yellow:  #fdd663;
+      --red:     #ef5350;
+      --border:  #363636;
     }
 
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     html, body {
-      height: 100%;
       background: var(--bg);
       color: var(--text);
       font-family: system-ui, 'Segoe UI', sans-serif;
-      overflow-x: hidden;
     }
 
-    /* ── ページ共通 ── */
-    .page { display: none; min-height: 100vh; }
+    .page { display: none; }
     .page.active { display: flex; flex-direction: column; }
-
-    h1 {
-      font-size: clamp(1.4rem, 3.5vw, 2.2rem);
-      font-weight: 700;
-      letter-spacing: 0.05em;
-      color: var(--accent);
-    }
-
-    h2 {
-      font-size: clamp(1.1rem, 2.5vw, 1.6rem);
-      font-weight: 700;
-      color: var(--text);
-    }
 
     /* ── ボタン共通 ── */
     .btn {
-      border: none;
-      border-radius: 8px;
-      cursor: pointer;
-      font-weight: 700;
-      font-family: inherit;
-      transition: opacity 0.15s, transform 0.1s;
+      border: none; border-radius: 4px; cursor: pointer;
+      font-weight: 700; font-family: inherit;
+      transition: opacity 0.12s;
     }
-    .btn:hover:not(:disabled) { opacity: 0.85; }
-    .btn:active:not(:disabled) { transform: scale(0.97); }
-    .btn:disabled { opacity: 0.35; cursor: not-allowed; }
-
-    .btn-primary {
-      background: var(--btn-primary);
-      color: #fff;
-    }
-    .btn-stop {
-      background: var(--btn-stop);
-      color: #fff;
-    }
-    .btn-secondary {
-      background: var(--surface2);
-      color: var(--text);
-      border: 1px solid var(--border);
-    }
-    .btn-small {
-      font-size: 0.85rem;
-      padding: 4px 10px;
-    }
+    .btn:hover:not(:disabled) { opacity: 0.78; }
+    .btn:active:not(:disabled) { opacity: 0.55; }
+    .btn:disabled { opacity: 0.28; cursor: not-allowed; }
+    .btn-primary   { background: #1565c0; color: #fff; }
+    .btn-stop      { background: #b71c1c; color: #fff; }
+    .btn-secondary { background: var(--surf2); color: var(--text); border: 1px solid var(--border); }
 
     .stepper-btn {
-      background: var(--surface2);
-      color: var(--text);
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      width: 32px;
-      height: 32px;
-      font-size: 1.1rem;
-      font-weight: 700;
-      cursor: pointer;
-      line-height: 1;
+      background: var(--surf2); color: var(--text);
+      border: 1px solid var(--border); border-radius: 3px;
+      width: 28px; height: 28px; font-size: 1rem; font-weight: 700; cursor: pointer;
     }
-    .stepper-btn:hover { background: var(--border); }
+    .stepper-btn:hover { background: #404040; }
 
     input[type="number"] {
-      background: var(--surface2);
-      color: var(--text);
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      text-align: center;
-      font-weight: 700;
-      font-family: inherit;
-      padding: 4px;
+      background: var(--surf2); color: var(--text);
+      border: 1px solid var(--border); border-radius: 3px;
+      text-align: center; font-weight: 700; font-family: inherit; padding: 3px;
     }
     input[type="number"]:focus { outline: 2px solid var(--accent); }
 
-    /* ── カード ── */
-    .card {
-      background: var(--surface);
-      border-radius: 12px;
-      padding: 20px;
-      border: 1px solid var(--surface2);
-    }
-
-    /* ────────────────────────────
-       設定モード (page-setup)
-    ──────────────────────────── */
+    /* ══════════════ 設定モード ══════════════ */
     #page-setup {
-      padding: 24px 20px;
-      gap: 20px;
-    }
-
-    #page-setup .setup-header {
-      display: flex;
-      align-items: center;
-      gap: 16px;
-      flex-wrap: wrap;
-    }
-
-    /* 生徒数設定 */
-    .stepper-row {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      flex-wrap: wrap;
-    }
-
-    .stepper-label {
-      font-weight: 700;
-      font-size: 1rem;
-      min-width: 90px;
-      color: var(--text-muted);
-    }
-
-    #total-input {
-      width: 64px;
-      height: 32px;
-      font-size: 1rem;
-    }
-
-    /* 欠席者グリッド */
-    .absent-grid {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 6px;
-      margin-top: 10px;
-    }
-
-    .absent-btn {
-      width: 40px;
-      height: 40px;
-      border-radius: 8px;
-      border: 1.5px solid var(--border);
-      background: var(--surface2);
-      color: var(--text);
-      font-size: 0.9rem;
-      font-weight: 700;
-      cursor: pointer;
-      transition: background 0.15s, color 0.15s;
-    }
-    .absent-btn.absent {
-      background: var(--absent);
-      color: var(--bg);
-      border-color: var(--absent);
-      text-decoration: line-through;
-    }
-
-    /* グループ設定 */
-    .group-count-row {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      flex-wrap: wrap;
-      margin-bottom: 16px;
-    }
-
-    #group-count-input {
-      width: 56px;
-      height: 32px;
-      font-size: 1rem;
-    }
-
-    #group-sizes-container {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-    }
-
-    .group-size-item {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      background: var(--surface2);
-      border-radius: 8px;
-      padding: 6px 10px;
-    }
-
-    .group-size-label {
-      font-weight: 700;
-      font-size: 0.9rem;
-      min-width: 30px;
-      color: var(--accent);
-    }
-
-    .group-size-input {
-      width: 48px;
-      height: 28px;
-      font-size: 0.9rem;
-    }
-
-    #total-check {
-      font-size: 0.95rem;
-      font-weight: 700;
-      margin-top: 12px;
-      padding: 8px 12px;
-      border-radius: 8px;
-      background: var(--surface2);
-      display: inline-block;
-    }
-    #total-check.ok   { color: var(--green); }
-    #total-check.warn { color: var(--yellow); }
-    #total-check.err  { color: var(--red); }
-
-    /* 開始ボタン */
-    #start-roulette-btn {
-      font-size: clamp(1.1rem, 2.5vw, 1.5rem);
-      padding: 14px 40px;
-      border-radius: 12px;
-      align-self: center;
-      margin-top: 8px;
-    }
-
-    /* ────────────────────────────
-       ルーレットモード (page-roulette)
-    ──────────────────────────── */
-    #page-roulette {
-      position: relative;
-      justify-content: center;
-      align-items: center;
-      padding: 20px;
+      padding: 14px 18px;
+      gap: 12px;
       min-height: 100vh;
     }
-
-    #back-to-setup-btn {
-      position: absolute;
-      top: 16px;
-      right: 16px;
-      font-size: 0.8rem;
-      padding: 6px 14px;
+    .setup-header {
+      display: flex; align-items: baseline; gap: 10px;
     }
-
-    /* idle: スタートボタン */
-    #idle-view {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 20px;
+    .setup-header h1 {
+      font-size: 1.3rem; font-weight: 700; color: var(--accent);
     }
-
-    #big-start-btn {
-      font-size: clamp(1.8rem, 5vw, 3rem);
-      padding: clamp(16px, 3vw, 28px) clamp(32px, 6vw, 60px);
-      border-radius: 16px;
+    .setup-badge {
+      font-size: 0.72rem; color: var(--muted);
+      border: 1px solid var(--border); padding: 1px 6px; border-radius: 2px;
     }
-
-    /* running / stopped 表示 */
-    #roulette-view {
-      display: none;
-      flex-direction: column;
-      align-items: center;
-      gap: 16px;
-      width: 100%;
-    }
-
-    #roulette-view.visible { display: flex; }
-
-    /* 生徒グリッド（ルーレット中）*/
-    #student-roulette-grid {
-      display: flex;
-      flex-wrap: wrap;
-      justify-content: center;
-      gap: 8px;
-      width: 100%;
-      max-width: 1200px;
-    }
-
-    .sr-cell {
+    .setup-section {
       background: var(--surface);
-      border: 1.5px solid var(--border);
-      border-radius: 10px;
-      padding: 6px 4px;
-      min-width: 70px;
-      text-align: center;
-      font-weight: 700;
+      border: 1px solid var(--border);
+      padding: 10px 14px;
+    }
+    .section-label {
+      font-size: 0.68rem; font-weight: 700; color: var(--muted);
+      text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 8px;
+    }
+    .stepper-row {
+      display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+    }
+    .stepper-label {
+      font-size: 0.85rem; color: var(--muted); min-width: 80px;
+    }
+    #total-input { width: 56px; height: 28px; font-size: 0.9rem; }
+    #present-count-label { color: var(--muted); font-size: 0.82rem; }
+
+    .absent-grid {
+      display: flex; flex-wrap: wrap; gap: 4px; margin-top: 8px;
+    }
+    .absent-btn {
+      width: 34px; height: 34px;
+      border: 1px solid var(--border); background: var(--surf2);
+      color: var(--text); font-size: 0.8rem; font-weight: 700;
+      cursor: pointer; border-radius: 0; transition: background 0.1s;
+    }
+    .absent-btn.absent {
+      background: #303030; color: #3a3a3a; text-decoration: line-through;
     }
 
-    .sr-cell .sr-num {
-      font-size: clamp(1rem, 2.2vw, 1.6rem);
-      color: var(--text-muted);
+    .group-count-row {
+      display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 10px;
+    }
+    #group-count-input { width: 50px; height: 28px; font-size: 0.9rem; }
+    #group-sizes-container { display: flex; flex-wrap: wrap; gap: 6px; }
+    .group-size-item {
+      display: flex; align-items: center; gap: 4px;
+      padding: 3px 7px; background: var(--surf2); border: 1px solid var(--border);
+    }
+    .group-size-label {
+      font-size: 0.8rem; font-weight: 700; color: var(--yellow); min-width: 26px;
+    }
+    .group-size-input { width: 40px; height: 24px; font-size: 0.8rem; }
+
+    #total-check {
+      font-size: 0.85rem; font-weight: 700;
+      margin-top: 8px; padding: 5px 8px;
+      background: var(--surf2); border-left: 3px solid transparent;
+      display: inline-block;
+    }
+    #total-check.ok   { border-color: #43a047; color: #a5d6a7; }
+    #total-check.warn { border-color: var(--yellow); color: var(--yellow); }
+    #total-check.err  { border-color: var(--red); color: #ef9a9a; }
+
+    #start-roulette-btn {
+      font-size: 1rem; padding: 10px 30px; align-self: center; margin-top: 4px;
     }
 
-    .sr-cell .sr-group {
-      font-size: clamp(1.2rem, 2.8vw, 2rem);
-      color: var(--accent);
-      min-height: 1.2em;
+    /* ══════════════ ルーレットモード ══════════════ */
+    #page-roulette {
+      width: 100vw; height: 100vh; overflow: hidden; position: relative;
+    }
+    #back-to-setup-btn {
+      position: absolute; top: 8px; right: 10px;
+      font-size: 0.68rem; padding: 4px 10px; z-index: 20;
     }
 
-    .sr-cell.absent-cell {
-      opacity: 0.3;
+    /* idle */
+    #idle-view {
+      flex: 1; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 24px;
+    }
+    #roulette-title {
+      font-size: clamp(1.1rem, 2.5vw, 1.8rem); font-weight: 700;
+      color: var(--accent); text-align: center;
+    }
+    #big-start-btn {
+      font-size: clamp(1.6rem, 4vw, 2.8rem);
+      padding: clamp(12px, 2vw, 20px) clamp(28px, 5vw, 52px);
     }
 
-    .sr-cell.absent-cell .sr-group {
-      color: var(--text-muted);
-      font-size: 0.9rem;
+    /* running */
+    #roulette-view {
+      display: none; flex-direction: column;
+      width: 100%; flex: 1; min-height: 0;
+      padding: 4px 8px 6px; gap: 8px;
     }
-
-    .sr-cell.confirmed .sr-group {
-      color: var(--green);
-    }
-
-    /* ストップボタン */
+    #roulette-view.visible { display: flex; }
+    #student-roulette-grid { flex: 1; min-height: 0; overflow: hidden; }
     #big-stop-btn {
-      font-size: clamp(1.4rem, 3.5vw, 2.2rem);
-      padding: clamp(12px, 2.5vw, 20px) clamp(28px, 5vw, 50px);
-      border-radius: 14px;
+      font-size: clamp(1rem, 2vw, 1.6rem);
+      padding: 10px 36px; align-self: center; flex-shrink: 0;
     }
 
-    /* ─── 結果ビュー ─── */
+    /* ルーレット表 */
+    .sr-table {
+      width: 100%; border-collapse: collapse; table-layout: fixed;
+    }
+    .sr-table td {
+      border: 1px solid #252525;
+      text-align: center; vertical-align: middle; overflow: hidden;
+    }
+    .sr-td-num {
+      color: var(--muted); font-weight: 700;
+      font-size: clamp(0.45rem, 0.95vw, 0.8rem);
+      width: 3%; background: #1e1e1e;
+    }
+    .sr-td-grp {
+      font-weight: 700;
+      font-size: clamp(0.85rem, 2.2vw, 1.8rem);
+      color: var(--yellow); width: 11%;
+    }
+    .sr-absent    { color: #2e2e2e !important; }
+    .sr-absent-grp { color: #2e2e2e !important; font-size: 0.6rem !important; }
+    .sr-confirmed  { color: #fff !important; }
+    .sr-sep { border-right: 2px solid #3a3a3a !important; }
+
+    /* ─── 結果エリア ─── */
     #result-area {
-      display: none;
-      flex-direction: column;
-      align-items: center;
-      gap: 16px;
-      width: 100%;
+      display: none; flex-direction: column;
+      width: 100%; flex: 1; min-height: 0;
+      padding: 4px 8px 4px; gap: 6px;
     }
-
     #result-area.visible { display: flex; }
 
     /* タブ */
     .tab-row {
-      display: flex;
-      gap: 0;
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      overflow: hidden;
+      display: flex; border: 1px solid var(--border); flex-shrink: 0; align-self: flex-start;
     }
-
     .tab-btn {
-      font-size: clamp(0.9rem, 2vw, 1.2rem);
+      font-size: clamp(0.75rem, 1.5vw, 1rem); font-weight: 700;
+      padding: 6px 20px; background: var(--surface); color: var(--muted);
+      border: none; cursor: pointer; transition: background 0.1s, color 0.1s;
+    }
+    .tab-btn.active { background: #1565c0; color: #fff; }
+    .tab-content { display: none; flex: 1; min-height: 0; overflow: hidden; }
+    .tab-content.active { display: flex; flex-direction: column; }
+
+    /* 生徒ビュー表 */
+    .sv-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+    .sv-table td {
+      border: 1px solid #252525;
+      text-align: center; vertical-align: middle; overflow: hidden;
+    }
+    .sv-td-num {
+      color: var(--muted); font-weight: 700;
+      font-size: clamp(0.45rem, 0.95vw, 0.8rem);
+      width: 3%; background: #1e1e1e;
+    }
+    .sv-td-grp {
       font-weight: 700;
-      padding: 10px 28px;
-      background: var(--surface);
-      color: var(--text-muted);
-      border: none;
-      cursor: pointer;
-      transition: background 0.15s, color 0.15s;
+      font-size: clamp(0.85rem, 2.1vw, 1.75rem);
+      color: #fff; width: 11%;
     }
+    .sv-absent-num { color: #2e2e2e !important; }
+    .sv-absent     { color: #444 !important; font-size: 0.6rem !important; }
+    .sv-sep { border-right: 2px solid #3a3a3a !important; }
 
-    .tab-btn.active {
-      background: var(--btn-primary);
-      color: #fff;
+    /* 班ごとビュー表 */
+    .gv-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+    .gv-table th, .gv-table td {
+      border: 1px solid #2a2a2a;
+      text-align: center; vertical-align: middle; overflow: hidden;
     }
-
-    .tab-content { display: none; width: 100%; max-width: 1200px; }
-    .tab-content.active { display: block; }
-
-    /* 生徒ビュー */
-    #student-view-grid {
-      display: flex;
-      flex-wrap: wrap;
-      justify-content: center;
-      gap: 8px;
-    }
-
-    .sv-cell {
-      background: var(--surface);
-      border: 1.5px solid var(--border);
-      border-radius: 10px;
-      padding: 8px 10px;
-      min-width: 80px;
-      text-align: center;
-    }
-
-    .sv-num {
-      font-size: clamp(1rem, 2vw, 1.4rem);
-      color: var(--text-muted);
+    .gv-th {
       font-weight: 700;
+      font-size: clamp(1rem, 2.5vw, 2.2rem);
+      color: var(--yellow); background: var(--surface);
+      border-bottom: 2px solid #484848 !important;
     }
-
-    .sv-arrow {
-      font-size: 0.7rem;
-      color: var(--text-muted);
-    }
-
-    .sv-group {
-      font-size: clamp(1.4rem, 3vw, 2.2rem);
+    .gv-td {
       font-weight: 700;
-      color: var(--green);
+      font-size: clamp(0.95rem, 2.3vw, 2rem);
+      color: #fff; background: var(--bg);
     }
+    .gv-td:empty { background: #111; }
 
-    .sv-cell.absent-cell .sv-group {
-      font-size: 0.85rem;
-      color: var(--text-muted);
-    }
-
-    /* 班ごとビュー */
-    #group-view-container {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 16px;
-      justify-content: center;
-    }
-
-    .group-card {
-      background: var(--surface);
-      border: 1.5px solid var(--border);
-      border-radius: 14px;
-      padding: 16px;
-      min-width: 160px;
-      max-width: 220px;
-      flex: 1 1 160px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .group-card-title {
-      font-size: clamp(1.2rem, 2.5vw, 1.8rem);
-      font-weight: 700;
-      color: var(--accent);
-    }
-
-    /* 円形配置コンテナ */
-    .circle-layout {
-      position: relative;
-      width: 140px;
-      height: 140px;
-    }
-
-    .circle-member {
-      position: absolute;
-      width: 44px;
-      height: 44px;
-      background: var(--surface2);
-      border: 2px solid var(--green);
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: clamp(0.85rem, 1.8vw, 1.1rem);
-      font-weight: 700;
-      color: var(--text);
-      transform: translate(-50%, -50%);
-    }
-
-    /* 2人横並び */
-    .pair-layout {
-      display: flex;
-      gap: 12px;
-    }
-
-    .pair-member {
-      width: 52px;
-      height: 52px;
-      background: var(--surface2);
-      border: 2px solid var(--green);
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 1.1rem;
-      font-weight: 700;
-      color: var(--text);
-    }
-
-    /* 1人 */
-    .single-member {
-      width: 60px;
-      height: 60px;
-      background: var(--surface2);
-      border: 2px solid var(--green);
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 1.2rem;
-      font-weight: 700;
-      color: var(--text);
-    }
-
-    /* 欠席者フッター */
+    /* 欠席フッター */
     #absent-footer {
-      color: var(--text-muted);
-      font-size: 0.9rem;
-      font-weight: 700;
-      text-align: center;
+      color: var(--muted); font-size: clamp(0.65rem, 1.3vw, 0.9rem);
+      font-weight: 700; flex-shrink: 0;
     }
 
-    /* 結果アクションボタン行 */
+    /* アクションボタン */
     .result-actions {
-      display: flex;
-      gap: 12px;
-      flex-wrap: wrap;
-      justify-content: center;
+      display: flex; gap: 8px; flex-wrap: wrap;
+      justify-content: center; flex-shrink: 0;
     }
-
     .result-actions .btn {
-      font-size: clamp(0.9rem, 2vw, 1.1rem);
-      padding: 10px 24px;
-    }
-
-    /* ── ユーティリティ ── */
-    .section-title {
-      font-size: 1.05rem;
-      font-weight: 700;
-      color: var(--text-muted);
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      margin-bottom: 8px;
+      font-size: clamp(0.7rem, 1.3vw, 0.9rem); padding: 7px 18px;
     }
   </style>
 </head>
@@ -543,30 +275,27 @@
 
   <div class="setup-header">
     <h1>グループ分けルーレット</h1>
-    <span style="color:var(--text-muted); font-size:0.85rem; align-self:flex-end; padding-bottom:4px;">教師設定</span>
+    <span class="setup-badge">教師設定</span>
   </div>
 
-  <!-- 生徒数 -->
-  <div class="card">
-    <div class="section-title">生徒数</div>
+  <div class="setup-section">
+    <div class="section-label">生徒数</div>
     <div class="stepper-row">
       <span class="stepper-label">出席番号上限</span>
       <button class="stepper-btn" id="total-dec">−</button>
       <input type="number" id="total-input" value="42" min="1" max="200" />
       <button class="stepper-btn" id="total-inc">+</button>
-      <span style="color:var(--text-muted); font-size:0.85rem;" id="present-count-label"></span>
+      <span id="present-count-label"></span>
     </div>
   </div>
 
-  <!-- 欠席者 -->
-  <div class="card">
-    <div class="section-title">欠席者（タップして選択）</div>
+  <div class="setup-section">
+    <div class="section-label">欠席者（クリックで選択）</div>
     <div class="absent-grid" id="absent-grid"></div>
   </div>
 
-  <!-- グループ設定 -->
-  <div class="card">
-    <div class="section-title">グループ設定</div>
+  <div class="setup-section">
+    <div class="section-label">グループ設定</div>
     <div class="group-count-row">
       <span class="stepper-label">グループ数</span>
       <button class="stepper-btn" id="group-dec">−</button>
@@ -577,7 +306,6 @@
     <div id="total-check"></div>
   </div>
 
-  <!-- 開始ボタン -->
   <button class="btn btn-primary" id="start-roulette-btn">ルーレット開始 ▶</button>
 
 </div>
@@ -588,11 +316,11 @@
 ════════════════════════════════════════════ -->
 <div id="page-roulette" class="page">
 
-  <button class="btn btn-secondary" id="back-to-setup-btn">◀ 設定に戻る</button>
+  <button class="btn btn-secondary" id="back-to-setup-btn">◀ 設定</button>
 
   <!-- idle: スタートボタン -->
   <div id="idle-view">
-    <h1 id="roulette-title" style="text-align:center;"></h1>
+    <div id="roulette-title"></div>
     <button class="btn btn-primary" id="big-start-btn">スタート ▶</button>
   </div>
 
@@ -620,9 +348,9 @@
     <div id="absent-footer"></div>
 
     <div class="result-actions">
-      <button class="btn btn-primary" id="reshuffle-btn">もう一度シャッフル ↺</button>
-      <button class="btn btn-secondary" id="back-setup-result-btn">◀ 設定に戻る</button>
-      <button class="btn btn-secondary" id="pdf-btn">PDF ダウンロード ⬇</button>
+      <button class="btn btn-primary" id="reshuffle-btn">もう一度 ↺</button>
+      <button class="btn btn-secondary" id="back-setup-result-btn">◀ 設定</button>
+      <button class="btn btn-secondary" id="pdf-btn">PDF ⬇</button>
     </div>
   </div>
 
@@ -633,6 +361,7 @@
 // ══════════════════════════════════════════════
 //  状態
 // ══════════════════════════════════════════════
+const TABLE_ROWS = 6;
 const GROUP_LABELS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
 
 const state = {
@@ -893,23 +622,37 @@ function goToSetup() {
 function buildRouletteGrid() {
   const container = document.getElementById('student-roulette-grid');
   container.innerHTML = '';
-  for (let i = 1; i <= state.totalStudents; i++) {
-    const cell = document.createElement('div');
-    cell.className = 'sr-cell' + (state.absentees.has(i) ? ' absent-cell' : '');
-    cell.id = `sr-${i}`;
-
-    const numEl = document.createElement('div');
-    numEl.className = 'sr-num';
-    numEl.textContent = i;
-
-    const grpEl = document.createElement('div');
-    grpEl.className = 'sr-group';
-    grpEl.id = `srg-${i}`;
-    grpEl.textContent = state.absentees.has(i) ? '欠席' : '?';
-
-    cell.append(numEl, grpEl);
-    container.appendChild(cell);
+  const colGroups = Math.ceil(state.totalStudents / TABLE_ROWS);
+  const rowH = Math.max(30, Math.floor((window.innerHeight - 82) / TABLE_ROWS));
+  const table = document.createElement('table');
+  table.className = 'sr-table';
+  for (let r = 0; r < TABLE_ROWS; r++) {
+    const tr = document.createElement('tr');
+    tr.style.height = rowH + 'px';
+    for (let cg = 0; cg < colGroups; cg++) {
+      const num = cg * TABLE_ROWS + r + 1;
+      const tdNum = document.createElement('td');
+      tdNum.className = 'sr-td-num';
+      const tdGrp = document.createElement('td');
+      if (num > state.totalStudents) {
+        tdGrp.className = 'sr-td-grp';
+      } else if (state.absentees.has(num)) {
+        tdNum.textContent = num;
+        tdNum.classList.add('sr-absent');
+        tdGrp.className = 'sr-td-grp sr-absent-grp';
+        tdGrp.textContent = '欠';
+      } else {
+        tdNum.textContent = num;
+        tdGrp.className = 'sr-td-grp';
+        tdGrp.id = 'srg-' + num;
+        tdGrp.textContent = '?';
+      }
+      if (cg < colGroups - 1) tdGrp.classList.add('sr-sep');
+      tr.append(tdNum, tdGrp);
+    }
+    table.appendChild(tr);
   }
+  container.appendChild(table);
 }
 
 function updateRouletteGrid() {
@@ -943,14 +686,9 @@ function startRoulette() {
 function stopRoulette() {
   if (state.timer) { clearInterval(state.timer); state.timer = null; }
   state.rouletteState = 'stopped';
-
-  // 最終確定 → confirmed スタイル
-  document.querySelectorAll('.sr-cell:not(.absent-cell)').forEach(cell => {
-    const grpEl = cell.querySelector('.sr-group');
-    if (grpEl) grpEl.classList.add('confirmed');
+  document.querySelectorAll('.sr-td-grp:not(.sr-absent-grp)').forEach(td => {
+    td.classList.add('sr-confirmed');
   });
-
-  // 少しディレイ後に結果表示
   setTimeout(() => {
     document.getElementById('roulette-view').classList.remove('visible');
     document.getElementById('result-area').classList.add('visible');
@@ -964,33 +702,39 @@ function stopRoulette() {
 //  生徒ビュー
 // ══════════════════════════════════════════════
 function renderStudentView() {
-  const grid = document.getElementById('student-view-grid');
-  grid.innerHTML = '';
-
-  for (let i = 1; i <= state.totalStudents; i++) {
-    const cell = document.createElement('div');
-    cell.className = 'sv-cell' + (state.absentees.has(i) ? ' absent-cell' : '');
-
-    const numEl = document.createElement('div');
-    numEl.className = 'sv-num';
-    numEl.textContent = i;
-
-    const arrowEl = document.createElement('div');
-    arrowEl.className = 'sv-arrow';
-    arrowEl.textContent = '↓';
-
-    const grpEl = document.createElement('div');
-    grpEl.className = 'sv-group';
-    if (state.absentees.has(i)) {
-      grpEl.textContent = '欠席';
-    } else {
-      const gIdx = state.assignment[i];
-      grpEl.textContent = gIdx !== undefined ? groupLabel(gIdx) + '班' : '?';
+  const container = document.getElementById('student-view-grid');
+  container.innerHTML = '';
+  const colGroups = Math.ceil(state.totalStudents / TABLE_ROWS);
+  const rowH = Math.max(28, Math.floor((window.innerHeight - 148) / TABLE_ROWS));
+  const table = document.createElement('table');
+  table.className = 'sv-table';
+  for (let r = 0; r < TABLE_ROWS; r++) {
+    const tr = document.createElement('tr');
+    tr.style.height = rowH + 'px';
+    for (let cg = 0; cg < colGroups; cg++) {
+      const num = cg * TABLE_ROWS + r + 1;
+      const tdNum = document.createElement('td');
+      tdNum.className = 'sv-td-num';
+      const tdGrp = document.createElement('td');
+      if (num > state.totalStudents) {
+        tdGrp.className = 'sv-td-grp';
+      } else if (state.absentees.has(num)) {
+        tdNum.textContent = num;
+        tdNum.classList.add('sv-absent-num');
+        tdGrp.className = 'sv-td-grp sv-absent';
+        tdGrp.textContent = '欠席';
+      } else {
+        tdNum.textContent = num;
+        tdGrp.className = 'sv-td-grp';
+        const gIdx = state.assignment[num];
+        tdGrp.textContent = gIdx !== undefined ? groupLabel(gIdx) + '班' : '?';
+      }
+      if (cg < colGroups - 1) tdGrp.classList.add('sv-sep');
+      tr.append(tdNum, tdGrp);
     }
-
-    cell.append(numEl, arrowEl, grpEl);
-    grid.appendChild(cell);
+    table.appendChild(tr);
   }
+  container.appendChild(table);
 }
 
 // ══════════════════════════════════════════════
@@ -999,8 +743,6 @@ function renderStudentView() {
 function renderGroupView() {
   const container = document.getElementById('group-view-container');
   container.innerHTML = '';
-
-  // 班ごとにメンバー集計
   const groups = Array.from({ length: state.numGroups }, () => []);
   for (let i = 1; i <= state.totalStudents; i++) {
     if (!state.absentees.has(i)) {
@@ -1008,63 +750,36 @@ function renderGroupView() {
       if (gIdx !== undefined) groups[gIdx].push(i);
     }
   }
-
-  groups.forEach((members, gIdx) => {
-    const card = document.createElement('div');
-    card.className = 'group-card';
-
-    const title = document.createElement('div');
-    title.className = 'group-card-title';
-    title.textContent = groupLabel(gIdx) + '班';
-    card.appendChild(title);
-
-    if (members.length === 0) {
-      const empty = document.createElement('div');
-      empty.style.color = 'var(--text-muted)';
-      empty.style.fontSize = '0.85rem';
-      empty.textContent = '(なし)';
-      card.appendChild(empty);
-    } else if (members.length === 1) {
-      const wrap = document.createElement('div');
-      const m = document.createElement('div');
-      m.className = 'single-member';
-      m.textContent = members[0];
-      wrap.appendChild(m);
-      card.appendChild(wrap);
-    } else if (members.length === 2) {
-      const wrap = document.createElement('div');
-      wrap.className = 'pair-layout';
-      members.forEach(num => {
-        const m = document.createElement('div');
-        m.className = 'pair-member';
-        m.textContent = num;
-        wrap.appendChild(m);
-      });
-      card.appendChild(wrap);
-    } else {
-      // 3人以上: 円形配置
-      const wrap = document.createElement('div');
-      wrap.className = 'circle-layout';
-      const n   = members.length;
-      const r   = 46; // 半径px (circle-layout 140px / 2 - 24px)
-      const cx  = 70;
-      const cy  = 70;
-      members.forEach((num, k) => {
-        const angle = (2 * Math.PI * k / n) - Math.PI / 2;
-        const x = cx + r * Math.cos(angle);
-        const y = cy + r * Math.sin(angle);
-        const m = document.createElement('div');
-        m.className = 'circle-member';
-        m.textContent = num;
-        m.style.left = `${x}px`;
-        m.style.top  = `${y}px`;
-        wrap.appendChild(m);
-      });
-      card.appendChild(wrap);
-    }
-
-    container.appendChild(card);
+  const maxMembers = Math.max(...groups.map(g => g.length), 1);
+  const totalRows = maxMembers + 1;
+  const rowH = Math.max(28, Math.floor((window.innerHeight - 148) / totalRows));
+  const table = document.createElement('table');
+  table.className = 'gv-table';
+  const thead = document.createElement('thead');
+  const headerTr = document.createElement('tr');
+  headerTr.style.height = rowH + 'px';
+  groups.forEach((_, gIdx) => {
+    const th = document.createElement('th');
+    th.className = 'gv-th';
+    th.textContent = groupLabel(gIdx) + '班';
+    headerTr.appendChild(th);
   });
+  thead.appendChild(headerTr);
+  table.appendChild(thead);
+  const tbody = document.createElement('tbody');
+  for (let r = 0; r < maxMembers; r++) {
+    const tr = document.createElement('tr');
+    tr.style.height = rowH + 'px';
+    groups.forEach(members => {
+      const td = document.createElement('td');
+      td.className = 'gv-td';
+      td.textContent = members[r] !== undefined ? String(members[r]) : '';
+      tr.appendChild(td);
+    });
+    tbody.appendChild(tr);
+  }
+  table.appendChild(tbody);
+  container.appendChild(table);
 }
 
 function renderAbsentFooter() {
@@ -1310,3 +1025,6 @@ init();
 </script>
 </body>
 </html>
+
+
+
