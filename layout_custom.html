@@ -358,6 +358,7 @@
 
     document.getElementById("resetBtn").addEventListener("click", () => {
       if (timer) return; // シャッフル中は無効
+      if (!confirm("現在のルーレット結果が消えてしまいます。よろしいでしょうか？")) return;
       
       // 全座席を有効化
       seatActive.fill(true);
