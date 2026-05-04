@@ -144,6 +144,7 @@
     .stepper-label {
       font-size: 0.85rem; color: var(--muted); min-width: 80px;
     }
+    #start-input,
     #total-input { width: 56px; height: 28px; font-size: 0.9rem; }
     #present-count-label { color: var(--muted); font-size: 0.82rem; }
 
@@ -352,6 +353,12 @@
   <div class="setup-section">
     <div class="section-label">生徒数</div>
     <div class="stepper-row">
+      <span class="stepper-label">出席番号下限</span>
+      <button class="stepper-btn" id="start-dec">−</button>
+      <input type="number" id="start-input" value="1" min="1" max="200" />
+      <button class="stepper-btn" id="start-inc">+</button>
+    </div>
+    <div class="stepper-row" style="margin-top:6px">
       <span class="stepper-label">出席番号上限</span>
       <button class="stepper-btn" id="total-dec">−</button>
       <input type="number" id="total-input" value="42" min="1" max="200" />
@@ -442,6 +449,7 @@ const GROUP_LABELS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
 
 const state = {
   totalStudents: 42,
+  startNum: 1,
   absentees: new Set(),
   numGroups: 6,
   groupSizes: [],       // 各班の人数 [n1, n2, ...]
@@ -464,7 +472,7 @@ function shuffle(arr) {
 
 function presentStudents() {
   const arr = [];
-  for (let i = 1; i <= state.totalStudents; i++) {
+  for (let i = state.startNum; i <= state.totalStudents; i++) {
     if (!state.absentees.has(i)) arr.push(i);
   }
   return arr;
@@ -513,7 +521,7 @@ function assignGroups() {
 function renderAbsentGrid() {
   const grid = document.getElementById('absent-grid');
   grid.innerHTML = '';
-  for (let i = 1; i <= state.totalStudents; i++) {
+  for (let i = state.startNum; i <= state.totalStudents; i++) {
     const btn = document.createElement('button');
     btn.className = 'absent-btn' + (state.absentees.has(i) ? ' absent' : '');
     btn.textContent = i;
@@ -620,11 +628,11 @@ function setupTotalStepper() {
   const inc  = document.getElementById('total-inc');
 
   const update = (val) => {
-    val = Math.max(1, Math.min(200, val));
+    val = Math.max(state.startNum, Math.min(200, val));
     state.totalStudents = val;
     inp.value = val;
-    // 欠席者のうち上限超えたものを削除
-    [...state.absentees].forEach(n => { if (n > val) state.absentees.delete(n); });
+    // 欠席者のうち範囲外のものを削除
+    [...state.absentees].forEach(n => { if (n > val || n < state.startNum) state.absentees.delete(n); });
     state.groupSizes = autoGroupSizes();
     renderAbsentGrid();
     renderGroupSizes();
@@ -651,6 +659,32 @@ function setupGroupStepper() {
     inp.value = val;
     state.groupSizes = autoGroupSizes();
     renderGroupSizes();
+    checkTotalBalance();
+  };
+
+  dec.addEventListener('click', () => update(+inp.value - 1));
+  inc.addEventListener('click', () => update(+inp.value + 1));
+  inp.addEventListener('input', () => {
+    const v = parseInt(inp.value);
+    if (!isNaN(v)) update(v);
+  });
+}
+
+function setupStartStepper() {
+  const inp = document.getElementById('start-input');
+  const dec = document.getElementById('start-dec');
+  const inc = document.getElementById('start-inc');
+
+  const update = (val) => {
+    val = Math.max(1, Math.min(state.totalStudents, val));
+    state.startNum = val;
+    inp.value = val;
+    // 欠席者のうち範囲外のものを削除
+    [...state.absentees].forEach(n => { if (n < val || n > state.totalStudents) state.absentees.delete(n); });
+    state.groupSizes = autoGroupSizes();
+    renderAbsentGrid();
+    renderGroupSizes();
+    updatePresentLabel();
     checkTotalBalance();
   };
 
@@ -698,7 +732,8 @@ function goToSetup() {
 function buildRouletteGrid() {
   const container = document.getElementById('student-roulette-grid');
   container.innerHTML = '';
-  const colGroups = Math.ceil(state.totalStudents / TABLE_ROWS);
+  const numStudents = state.totalStudents - state.startNum + 1;
+  const colGroups = Math.ceil(numStudents / TABLE_ROWS);
   const rowH = Math.max(30, Math.floor((window.innerHeight - 82) / TABLE_ROWS));
   const table = document.createElement('table');
   table.className = 'sr-table';
@@ -706,7 +741,7 @@ function buildRouletteGrid() {
     const tr = document.createElement('tr');
     tr.style.height = rowH + 'px';
     for (let cg = 0; cg < colGroups; cg++) {
-      const num = cg * TABLE_ROWS + r + 1;
+      const num = cg * TABLE_ROWS + r + state.startNum;
       const tdNum = document.createElement('td');
       tdNum.className = 'sr-td-num';
       const tdGrp = document.createElement('td');
@@ -733,7 +768,7 @@ function buildRouletteGrid() {
 }
 
 function updateRouletteGrid() {
-  for (let i = 1; i <= state.totalStudents; i++) {
+  for (let i = state.startNum; i <= state.totalStudents; i++) {
     if (state.absentees.has(i)) continue;
     const el = document.getElementById(`srg-${i}`);
     if (el) {
@@ -782,7 +817,8 @@ function stopRoulette() {
 function renderStudentView() {
   const container = document.getElementById('student-view-grid');
   container.innerHTML = '';
-  const colGroups = Math.ceil(state.totalStudents / TABLE_ROWS);
+  const numStudents = state.totalStudents - state.startNum + 1;
+  const colGroups = Math.ceil(numStudents / TABLE_ROWS);
   const rowH = Math.max(28, Math.floor((window.innerHeight - 148) / TABLE_ROWS));
   const table = document.createElement('table');
   table.className = 'sv-table';
@@ -790,7 +826,7 @@ function renderStudentView() {
     const tr = document.createElement('tr');
     tr.style.height = rowH + 'px';
     for (let cg = 0; cg < colGroups; cg++) {
-      const num = cg * TABLE_ROWS + r + 1;
+      const num = cg * TABLE_ROWS + r + state.startNum;
       const tdNum = document.createElement('td');
       tdNum.className = 'sv-td-num';
       const tdGrp = document.createElement('td');
@@ -823,7 +859,7 @@ function renderGroupView() {
   const container = document.getElementById('group-view-container');
   container.innerHTML = '';
   const groups = Array.from({ length: state.numGroups }, () => []);
-  for (let i = 1; i <= state.totalStudents; i++) {
+  for (let i = state.startNum; i <= state.totalStudents; i++) {
     if (!state.absentees.has(i)) {
       const gIdx = state.assignment[i];
       if (gIdx !== undefined) groups[gIdx].push(i);
@@ -992,7 +1028,7 @@ function renderCircleView() {
   container.innerHTML = '';
 
   const groups = Array.from({ length: state.numGroups }, () => []);
-  for (let i = 1; i <= state.totalStudents; i++) {
+  for (let i = state.startNum; i <= state.totalStudents; i++) {
     if (!state.absentees.has(i)) {
       const gIdx = state.assignment[i];
       if (gIdx !== undefined) groups[gIdx].push(i);
@@ -1066,13 +1102,13 @@ async function downloadPDF() {
   title1.innerHTML = `グループ分けルーレット — 生徒ビュー <span>${ts}</span>`;
   page1.appendChild(title1);
 
-  const colGroups = Math.ceil(state.totalStudents / TABLE_ROWS_PDF);
+  const colGroups = Math.ceil((state.totalStudents - state.startNum + 1) / TABLE_ROWS_PDF);
   const tbl1 = document.createElement('table');
   tbl1.className = 'pdf-sv-table';
   for (let r = 0; r < TABLE_ROWS_PDF; r++) {
     const tr = document.createElement('tr');
     for (let cg = 0; cg < colGroups; cg++) {
-      const num = cg * TABLE_ROWS_PDF + r + 1;
+      const num = cg * TABLE_ROWS_PDF + r + state.startNum;
       const tdN = document.createElement('td');
       const tdG = document.createElement('td');
       if (num > state.totalStudents) {
@@ -1111,7 +1147,7 @@ async function downloadPDF() {
   page2.appendChild(title2);
 
   const groups = Array.from({ length: state.numGroups }, () => []);
-  for (let i = 1; i <= state.totalStudents; i++) {
+  for (let i = state.startNum; i <= state.totalStudents; i++) {
     if (!state.absentees.has(i)) {
       const g = state.assignment[i];
       if (g !== undefined) groups[g].push(i);
@@ -1159,7 +1195,7 @@ async function downloadPDF() {
   page3.appendChild(title3);
   {
     const groups3 = Array.from({ length: state.numGroups }, () => []);
-    for (let i = 1; i <= state.totalStudents; i++) {
+    for (let i = state.startNum; i <= state.totalStudents; i++) {
       if (!state.absentees.has(i)) {
         const g = state.assignment[i];
         if (g !== undefined) groups3[g].push(i);
@@ -1234,6 +1270,7 @@ function init() {
   renderGroupSizes();
   updatePresentLabel();
   checkTotalBalance();
+  setupStartStepper();
   setupTotalStepper();
   setupGroupStepper();
 }
